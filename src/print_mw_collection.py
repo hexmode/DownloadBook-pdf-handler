@@ -16,25 +16,30 @@ async def generate_pdf(url: str, output_file: str) -> None:
 
         await page.goto(url)
 
-        # Fetch all <h1> elements and their positions for TOC generation
-        h1_positions = await page.evaluate('''() => {
-            return Array.from(document.querySelectorAll('h1')).map(h1 => ({
-                text: h1.textContent.trim(),
-                top: h1.getBoundingClientRect().top
-            }));
+        # Fetch <h1> and <h2> elements and their positions for TOC generation
+        headers = await page.evaluate('''() => {
+            const getHeaderInfo = (header) => ({
+                type: header.tagName.toLowerCase(),
+                text: header.textContent.trim(),
+                top: header.getBoundingClientRect().top
+            });
+
+            return [
+                ...Array.from(document.querySelectorAll('h1')).map(getHeaderInfo),
+                ...Array.from(document.querySelectorAll('h2')).map(getHeaderInfo)
+            ].sort((a, b) => a.top - b.top);
         }''')
 
-        # Calculate page numbers and generate a TOC
         toc = []
-        for h1 in h1_positions:
-            # Assuming 800px per page for this example
-            page_number = int(h1['top'] / 800) + 1
-            toc.append(f"{h1['text']} - Page {page_number}")
+        for header in headers:
+            page_number = int(header['top'] / 800) + 1
+            indent = "    " if header['type'] == 'h2' else ""
+            toc.append(f"{indent}{header['text']} - Page {page_number}")
 
         # Print TOC for debugging purposes
-        logger.info("\n".join(toc))
+        logger.info("Table of Contents:\n" + "\n".join(toc))
 
-        await page.pdf(path=output_file, format='A4')
+        await page.pdf(path=output_file, format='letter')
 
         await browser.close()
 
