@@ -105,8 +105,11 @@ class Collection:
                     self.add_pages(pages, pdf_writer, page_offset)
                     page_offset += len(pages)
 
-            toc_page = TableOfContents(pdf_writer, self.title_list)
-            pdf_writer.pages.insert(0, toc_page.generate_toc_pdf())
+            toc = TableOfContents(pdf_writer, self.title_list)
+            toc_page = toc.generate_toc_pdf()
+            self.add_footer("i", toc_page)
+
+            pdf_writer.pages.insert(0, toc_page)
 
             pdf_writer.save(self.output_file)
 
