@@ -62,4 +62,4 @@ def main() -> None:
     ]
 
     page_list = [URL_PREFIX + page for page in pages]
-    Collection("March 2004 Featured Articles.pdf", page_list).create_pdf()
+    Collection("March 2004 Featured Articles", "March 2004 Featured Articles.pdf", page_list).create_pdf()

@@ -10,22 +10,27 @@ import re
 
 from lxml import etree
 import httpx
-from playwright.async_api import async_playwright, Page
-import pikepdf
+from playwright.async_api import async_playwright, Page as BrowserPage
+from pikepdf import Dictionary, Name, Object, open as pdf_open, Pdf, Page as PdfPage, String
+from pikepdf._core import PageList
 
 from src.toc import TableOfContents, TocEntry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Font size for header and footer
+HF_FONT_SIZE = 10
 
 class Collection:
     """
-    A class to represent a collection of web pages and operations to generate and modify PDFs.
+    A class to represent a collection of wiki pages and operations to generate PDFs from them.
 
     Attributes
     ----------
-    page_list : list of str
+    title : str
+        The title for this collection
+    page_list : list[str]
         A list of URLs that make up the subsequent pages of the book.
     page_num : int
         Internal use for current page count.
@@ -33,12 +38,14 @@ class Collection:
         The file path where the generated PDF will be saved.
     """
 
+    title: str
     page_list: list[str]
     title_list: list[TocEntry]
     page_num: int
     output_file: str
 
-    def __init__(self, output_file: str, page_list: list[str]) -> None:
+    def __init__(self, title: str, output_file: str, page_list: list[str]) -> None:
+        self.title = title
         self.page_list = page_list
         self.title_list = []
         self.output_file = output_file
@@ -72,7 +79,6 @@ class Collection:
         rmtree(build_dir)
         return self.output_file
 
-
     def concat_pages(self, output_list: list[str]) -> None:
         """
         Concatenate PDF pages from a list of file paths into a single PDF.
@@ -89,19 +95,100 @@ class Collection:
         None
 
         """
-        with pikepdf.Pdf.new() as pdf_writer:
-            page_offset = 0
+        with Pdf.new() as pdf_writer:
+            page_offset = 1
 
             for pdf_path in output_list:
-                with pikepdf.Pdf.open(pdf_path) as pdf_reader:
-                    page_offset += len(pdf_reader.pages)
-                    logger.debug("Adding %d page(s) from %s to %s.", len(pdf_reader.pages), pdf_path, self.output_file)
-                    pdf_writer.pages.extend(pdf_reader.pages)
+                with Pdf.open(pdf_path) as pdf_reader:
+                    pages = pdf_reader.pages
+                    logger.debug("Adding %d page(s) from %s to %s.", len(pages), pdf_path, self.output_file)
+                    self.add_pages(pages, pdf_writer, page_offset)
+                    page_offset += len(pages)
 
             toc_page = TableOfContents(pdf_writer, self.title_list)
             pdf_writer.pages.insert(0, toc_page.generate_toc_pdf())
 
             pdf_writer.save(self.output_file)
+
+    def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
+        """
+        Add pages to a PDF writer with text in the heading and footer.
+
+        Parameters
+        ----------
+        pages : PageList
+            A list of pages to be added to the writer.
+        writer : Pdf
+            The PDF writer object where pages will be appended.
+        start_page : int
+            The starting page number to add to the footer text.
+        """
+        page_number = start_page
+        for page in pages:
+            self.ensure_resources(page)
+            self.add_header(self.title, page)
+            self.add_footer(f"Page {page_number}", page)
+            writer.pages.append(page)
+            page_number += 1
+
+    def ensure_resources(self, page: PdfPage) -> None:
+        """
+        Ensure that the resources dictionary for the page defines the /F1 font.
+
+        Parameters
+        ----------
+        page : PdfPage
+            The PDF page to check or update the resources.
+        """
+        font_dict = Dictionary({
+            '/Type': Name.Font,
+            '/Subtype': Name('/Type1'),
+            '/BaseFont': Name('/Helvetica'),  # Standard PDF font
+        })
+
+        page.add_resource(font_dict, Name.Font, Name('/F1'))
+
+    def add_header(self, header: str, page: PdfPage) -> PdfPage:
+        """
+        Add a header to the specified PDF page.
+
+        Parameters
+        ----------
+        header : str
+            The header text to add.
+        page : PdfPage
+            The PDF page where the header will be added.
+        """
+        encoded = f"""q
+               BT
+               /F1 {HF_FONT_SIZE} Tf
+               1 0 0 1 100 750 Tm
+               ({header}) Tj
+               ET
+               Q""".encode('utf-8')
+        page.contents_add(encoded, prepend=True)
+        return page
+
+    def add_footer(self, footer: str, page: PdfPage) -> PdfPage:
+        """
+        Add a header to the specified PDF page.
+
+        Parameters
+        ----------
+        header : str
+            The header text to add.
+        page : PdfPage
+            The PDF page where the header will be added.
+        """
+        encoded = f"""q
+               BT
+               /F1 {HF_FONT_SIZE} Tf
+               1 0 0 1 100 50 Tm
+               ({footer}) Tj
+               ET
+               Q""".encode('utf-8')
+        page.contents_add(encoded, prepend=True)
+        return page
 
     def fetch_html(self, url: str) -> str:
         """
@@ -182,13 +269,13 @@ class Collection:
             return result[0]
         return None
 
-    async def output_page(self, page: Page, output_file: str) -> None:
+    async def output_page(self, page: BrowserPage, output_file: str) -> None:
         """
         Produce a single page.
 
         Parameters
         ----------
-        page : Page
+        page : BrowserPage
             The page object to produce and render.
         output_file : str
             The path to the output file where the page will be saved.
@@ -205,7 +292,7 @@ class Collection:
             logger.info("No pages")
             return
 
-        with pikepdf.open(BytesIO(rendered)) as pdf:
+        with pdf_open(BytesIO(rendered)) as pdf:
             page_count = len(pdf.pages)
             logger.info("Produced %d page(s) starting on %s", page_count, self.page_num)
             self.page_num += page_count
@@ -217,13 +304,13 @@ class Collection:
 
             pdf.save(output_file)
 
-    def replace_links_in_page(self, page: pikepdf.Page, old_url: str, new_url: str) -> None:
+    def replace_links_in_page(self, page: PdfPage, old_url: str, new_url: str) -> None:
         """
         Replace links in a PDF page from old_url to new_url.
 
         Parameters
         ----------
-        page : pikepdf.Page
+        page : PdfPage
             The PDF page in which to replace links.
         old_url : str
             The URL to be replaced.
@@ -234,17 +321,18 @@ class Collection:
         -------
         None
         """
-        annots: pikepdf.Object | None = page.get("/Annots")
-        if annots is None or not isinstance(annots, pikepdf.objects.Object):
+        annots: Object | None = page.get("/Annots")
+        if annots is None or not isinstance(annots, Object):
             return
 
         for annot in annots.as_list():
-            if annot is None or not isinstance(annot, pikepdf.objects.Object):
-                continue
-            uri = annot.get("/A", {}).get("/URI")
+            uri = None
+            a_link = annot.get("/A")
+            if a_link is not None:
+                uri = a_link.get("/URI")
             if uri and uri == old_url:
                 logger.info("Updating link: %s to %s", uri, new_url)
-                annot["/A"]["/URI"] = pikepdf.String(new_url)
+                annot["/A"]["/URI"] = String(new_url)
 
     def modify_links(self, pdf_bytes: bytes, old_url: str, new_url: str) -> bytes | None:
         """
@@ -266,7 +354,7 @@ class Collection:
         """
         try:
             result_pdf: bytes
-            with pikepdf.open(BytesIO(pdf_bytes)) as pdf:
+            with pdf_open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages:
                     self.replace_links_in_page(page, old_url, new_url)
                 output = BytesIO()
