@@ -13,7 +13,7 @@ import httpx
 from playwright.async_api import async_playwright, Page
 import pikepdf
 
-from src.toc import TableOfContents
+from src.toc import TableOfContents, TocEntry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class Collection:
     """
 
     page_list: list[str]
-    title_list: list[str]
+    title_list: list[TocEntry]
     page_num: int
     output_file: str
 
@@ -72,10 +72,12 @@ class Collection:
         rmtree(build_dir)
         return self.output_file
 
+
     def concat_pages(self, output_list: list[str]) -> None:
         """
-        Concatenate PDF pages from a list of file paths into a single PDF and insert a Table of Contents as the
-        first page.
+        Concatenate PDF pages from a list of file paths into a single PDF.
+
+        Insert a Table of Contents as the first page.
 
         Parameters
         ----------
@@ -146,7 +148,7 @@ class Collection:
             title = self.extract_text_with_xslt(page_content, "//h1[@id='firstHeading']")
             if title is None:
                 title = "Untitled"   # Shouldn't happen with MediaWiki
-            self.title_list.append(f"{title} - Page {self.page_num}")
+            self.title_list.append(TocEntry(title=title, page=self.page_num))
 
             await page.goto(url)
 
