@@ -111,7 +111,7 @@ class PdfTocEntry:
             '/Type': Name('/Annot'),
             '/Subtype': Name('/Link'),                  # Define this as a Link annotation
             '/Rect': Rectangle(                         # Clickable area
-                100, self.offset - (Common.LINE_HEIGHT / 2),
+                Common.MARGIN, self.offset - (Common.LINE_HEIGHT / 2),
                 300, self.offset + (Common.LINE_HEIGHT / 2)),
             '/Border': [0, 0, 0],                       # No visible border for the link
             '/A': Dictionary({
