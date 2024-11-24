@@ -5,11 +5,13 @@ import logging
 
 from pikepdf import Array, Dictionary, Name, Object, Pdf, Page, Rectangle, Stream
 
+from src.common import Common
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 TocEntry = namedtuple('TocEntry', ['title', 'page'])
-
-LINE_HEIGHT = 20
+TOC_FONT_SIGN = '/F1'
+TOC_FONT_SIZE = 12
 
 
 class PdfTocEntry:
@@ -85,8 +87,8 @@ class PdfTocEntry:
         logger.debug("Making Toc content entry for %s to %d", entry.title, entry.page)
         return dedent(f"""q
             BT
-            /F1 12 Tf
-            1 0 0 1 100 {self.offset} Tm
+            {TOC_FONT_SIGN} {TOC_FONT_SIZE} Tf
+            {Common.ID_TRANSFORM} {Common.MARGIN} {self.offset} Tm
             ({self.escape_pdf_text(entry.title)} - {entry.page}) Tj
             ET
             Q""").encode('utf-8')
@@ -109,8 +111,8 @@ class PdfTocEntry:
             '/Type': Name('/Annot'),
             '/Subtype': Name('/Link'),                  # Define this as a Link annotation
             '/Rect': Rectangle(                         # Clickable area
-                100, self.offset - (LINE_HEIGHT / 2),
-                300, self.offset + (LINE_HEIGHT / 2)),
+                100, self.offset - (Common.LINE_HEIGHT / 2),
+                300, self.offset + (Common.LINE_HEIGHT / 2)),
             '/Border': [0, 0, 0],                       # No visible border for the link
             '/A': Dictionary({
                 '/S': Name('/GoTo'),                    # GoTo action type
@@ -160,28 +162,26 @@ class TableOfContents:
         Page
             A Page object containing the table of contents page.
         """
-        page_width, page_height = 612, 792  # 8.5x11 inches
-
         # Define resources dictionary (e.g., fonts)
         resources = self.get_resources()
 
         # Add content stream
-        toc_text = self.toc_header()
+        toc_text = Common.header("Table of Contents", TOC_FONT_SIZE, TOC_FONT_SIGN)
         toc_annots = self.pdf.make_indirect(Array())
 
         # Add content stream for each title
-        i = 700
+        i = Common.PAGE_HEIGHT - Common.MARGIN
         for entry in self.title_list:
             toc_entry = PdfTocEntry(self.pdf, entry, i)
             toc_text += toc_entry.content
             toc_annots.append(self.pdf.make_indirect(toc_entry.annot))
-            i -= LINE_HEIGHT
+            i -= Common.LINE_HEIGHT
 
         content = Stream(self.pdf, toc_text)
 
         page_dict = Dictionary({
             '/Type': Name('/Page'),
-            '/MediaBox': Array([0, 0, page_width, page_height]),
+            '/MediaBox': Array([0, 0, Common.PAGE_WIDTH, Common.PAGE_HEIGHT]),
             '/Resources': self.pdf.make_indirect(resources),
             '/Contents': self.pdf.make_indirect(content),
             '/Annots': self.pdf.make_indirect(toc_annots)
@@ -189,23 +189,6 @@ class TableOfContents:
 
         # Add the page to the PDF
         return Page(self.pdf.make_indirect(page_dict))
-
-    def toc_header(self) -> bytes:
-        """
-        Return the 'Table of Contents' header as a string.
-
-        Returns
-        -------
-        str
-            The formatted 'Table of Contents' header string.
-        """
-        return """
-               BT
-               /F1 16 Tf
-               1 0 0 1 100 750 Tm
-               (Table of Contents) Tj
-               ET
-               """.encode('utf-8')
 
     def get_resources(self) -> Dictionary:
         """
@@ -216,13 +199,9 @@ class TableOfContents:
         Dictionary
             A dictionary containing the necessary resources for the PDF, including font information.
         """
-        font_ref = self.pdf.make_indirect(Dictionary({
-            '/Type': Name('/Font'),
-            '/Subtype': Name('/Type1'),
-            '/BaseFont': Name('/Helvetica-Bold'),
-        }))
+        font_ref = self.pdf.make_indirect(Common.font_dictionary('Helvetica-Bold'))
 
         # Create a valid resources dictionary
         return Dictionary({
-            '/Font': Dictionary({'/F1': font_ref})
+            '/Font': Dictionary({TOC_FONT_SIGN: font_ref})
         })

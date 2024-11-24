@@ -11,16 +11,15 @@ import re
 from lxml import etree
 import httpx
 from playwright.async_api import async_playwright, Page as BrowserPage
-from pikepdf import Dictionary, Name, Object, open as pdf_open, Pdf, Page as PdfPage, String
+from pikepdf import Name, Object, open as pdf_open, Pdf, Page as PdfPage, String
 from pikepdf._core import PageList
 
 from src.toc import TableOfContents, TocEntry
+from src.common import Common
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Font size for header and footer
-HF_FONT_SIZE = 10
 
 class Collection:
     """
@@ -143,13 +142,9 @@ class Collection:
         page : PdfPage
             The PDF page to check or update the resources.
         """
-        font_dict = Dictionary({
-            '/Type': Name.Font,
-            '/Subtype': Name('/Type1'),
-            '/BaseFont': Name('/Helvetica'),  # Standard PDF font
-        })
+        font_dict = Common.font_dictionary()
 
-        page.add_resource(font_dict, Name.Font, Name('/F1'))
+        page.add_resource(font_dict, Name.Font, Name(Common.HF_FONT_SIGN))
 
     def add_header(self, header: str, page: PdfPage) -> PdfPage:
         """
@@ -162,13 +157,7 @@ class Collection:
         page : PdfPage
             The PDF page where the header will be added.
         """
-        encoded = f"""q
-               BT
-               /F1 {HF_FONT_SIZE} Tf
-               1 0 0 1 100 750 Tm
-               ({header}) Tj
-               ET
-               Q""".encode('utf-8')
+        encoded = Common.header(header)
         page.contents_add(encoded, prepend=True)
         return page
 
@@ -183,13 +172,7 @@ class Collection:
         page : PdfPage
             The PDF page where the header will be added.
         """
-        encoded = f"""q
-               BT
-               /F1 {HF_FONT_SIZE} Tf
-               1 0 0 1 100 50 Tm
-               ({footer}) Tj
-               ET
-               Q""".encode('utf-8')
+        encoded = Common.footer(footer)
         page.contents_add(encoded, prepend=True)
         return page
 
