@@ -190,7 +190,7 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
-        with httpx.Client() as client:
+        with httpx.Client(verify="C:/Users/mhershberg002/Downloads/PwCRoot-3.crt") as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
             return response.text

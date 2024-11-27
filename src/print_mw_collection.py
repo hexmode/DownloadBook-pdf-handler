@@ -1,8 +1,7 @@
 """Print the collection that DocumentBook gives us."""
 
 from src.collection import Collection
-
-URL_PREFIX = 'https://en.wikipedia.org/wiki/Wikipedia:Today%27s_featured_article/'
+import src.settings as setting
 
 def main() -> None:
     """
@@ -27,39 +26,6 @@ def main() -> None:
     >>> main()
     This will generate PDF files for each page in the `pages` list.
     """
-    pages = [
-        'March_1,_2004',
-        'March_2,_2004',
-        'March_3,_2004',
-        'March_4,_2004',
-        'March_5,_2004',
-        'March_6,_2004',
-        'March_7,_2004',
-        'March_8,_2004',
-        'March_9,_2004',
-        'March_10,_2004',
-        'March_11,_2004',
-        'March_12,_2004',
-        'March_13,_2004',
-        'March_14,_2004',
-        'March_15,_2004',
-        'March_16,_2004',
-        'March_17,_2004',
-        'March_18,_2004',
-        'March_19,_2004',
-        'March_20,_2004',
-        'March_21,_2004',
-        'March_22,_2004',
-        'March_23,_2004',
-        'March_24,_2004',
-        'March_25,_2004',
-        'March_26,_2004',
-        'March_27,_2004',
-        'March_28,_2004',
-        'March_29,_2004',
-        'March_30,_2004',
-        'March_31,_2004',
-    ]
 
-    page_list = [URL_PREFIX + page for page in pages]
-    Collection("March 2004 Featured Articles", "March 2004 Featured Articles.pdf", page_list).create_pdf()
+    page_list = [setting.URL_PREFIX + page for page in setting.pages]
+    Collection(setting.title, setting.title.replace(' ', '_') + ".pdf", page_list).create_pdf()
