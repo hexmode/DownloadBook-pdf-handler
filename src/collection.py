@@ -16,6 +16,7 @@ from pikepdf._core import PageList
 
 from src.toc import TableOfContents, TocEntry
 from src.common import Common
+import src.settings as setting
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -190,7 +191,7 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
-        with httpx.Client(verify="C:/Users/mhershberg002/Downloads/PwCRoot-3.crt") as client:
+        with httpx.Client(verify=setting.verify if setting.verify is not None else True) as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
             return response.text
