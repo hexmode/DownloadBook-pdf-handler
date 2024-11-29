@@ -42,7 +42,7 @@ extend-exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.tox|\.venv|build|dist)/'
 
 [tool.flake8]
 max-line-length = 120
-ignore = ["N815", "D100", "D101", "D107", "W503" ] # Duplicate of numpydoc  # this is how black formats multi-line conditionals
+ignore = ["N815", "D100", "D101", "D107", "W503", "E116", "E262", "RST301"]
 
 [tool.isort]
 profile = "black"
