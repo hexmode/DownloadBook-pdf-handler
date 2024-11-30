@@ -33,6 +33,14 @@ types-paramiko = "^3.5.0.20240928"
 types-lxml = "^2024.11.8"
 types-requests = "^2.32.0.20241016"
 
+[tool.numpydoc_validation]
+# all except these listed
+checks = ["all","EX01","SA01","ES01"]
+
+# remember to use single quotes for regex in TOML
+exclude = ['\.undocumented_method$', '\.__repr__$']
+override_SS05 = ['^Process ', '^Assess ', '^Access ']
+
 [tool.pylint]
 max-line-length = 120
 
@@ -55,10 +63,9 @@ py_version = 312
 python_version = "3.12"
 disallow_untyped_defs = true
 strict_optional = true
-enable_incomplete_feature = ["NewGenericSyntax"]
 
 [[tool.mypy.overrides]]
-module = ["ansible.*", "inventory.*", "python_terraform.*", "linode_api4.*", "api4jenkins.*"]
+module = ["ansible.*", "inventory.*", "python_terraform.*", "linode_api4.*", "api4jenkins.*", "icecream.*", "mwclient.*"]
 ignore_missing_imports = true
 
 [tool.bandit]

@@ -1,6 +1,7 @@
 """Describe the structure of the document."""
+
 # pylint: disable=unsubscriptable-object
-from typing import TypedDict, NamedTuple
+from typing import NamedTuple, TypedDict
 
 
 class WikiLink(NamedTuple):
@@ -19,9 +20,14 @@ class WikiLink(NamedTuple):
     label: str
 
 
-class WikiPage(TypedDict):
+class WikiPage:  # pylint: disable=too-few-public-methods
     """
-    TypedDict representing a wiki page.
+    Class representing a wiki page.
+
+    Parameters
+    ----------
+    page : WikiLink
+        A WikiLink object that represents a link to a specific wiki page.
 
     Attributes
     ----------
@@ -34,8 +40,19 @@ class WikiPage(TypedDict):
     """
 
     page: WikiLink
-    content: str
-    rendered_pages: list[int]
+    content: str | None = None
+    rendered_pages: list[int] = []
+
+    def __init__(self, page: WikiLink):
+        """
+        Initialize an instance of the class with a WikiLink object.
+
+        Parameters
+        ----------
+        page : WikiLink
+            A WikiLink object that represents a link to a specific wiki page.
+        """
+        self.page = page
 
 
 class Section(TypedDict):
@@ -119,7 +136,8 @@ def parse_line(line: str) -> WikiLink:
 
 
 def populate_book(raw_structure: str) -> Book:
-    """Parse the hierarchical MediaWiki-style structure and generate a Book object.
+    """
+    Parse the hierarchical MediaWiki-style structure and generate a Book object.
 
     Parameters
     ----------
@@ -187,12 +205,14 @@ def populate_book(raw_structure: str) -> Book:
             }
         ]
     }
-
     """
     lines = raw_structure.strip().split("\n")
     book_link = parse_line(lines[0].strip())
-    book: Book = {"title": book_link.label, "front_matter": None, "chapters": []}
-
+    book: Book = {
+        "title": book_link.label,
+        "front_matter": [WikiPage(book_link)],
+        "chapters": [],
+    }
     current_chapter: Chapter | None = None
     current_section: Section | None = None
 
@@ -215,7 +235,7 @@ def populate_book(raw_structure: str) -> Book:
 
         elif line.startswith("::* "):  # WikiPage-level
             wikilink = parse_line(line[4:])
-            wiki_page: WikiPage = {"page": wikilink, "content": "", "rendered_pages": []}
+            wiki_page: WikiPage = WikiPage(wikilink)
             if current_section:
                 current_section["wiki_pages"].append(wiki_page)
             elif current_chapter:

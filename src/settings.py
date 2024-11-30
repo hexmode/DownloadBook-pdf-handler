@@ -9,12 +9,13 @@ from dotenv import load_dotenv
 from mwclient import Site
 from requests import Session
 
-from src.structure import populate_book, get_ordered_wiki_pages, WikiPage
+from src.structure import WikiPage, get_ordered_wiki_pages, populate_book
 
 load_dotenv()
 logging.basicConfig()
 
-# These are set at the end of this file.
+# fmt: off
+                                # These are set at the end of this file.
                                 # EnvVar           Description
 api_url: str                    # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
 username: str | None = None     # WIKI_USER        The username for the wiki, if any.
@@ -26,6 +27,7 @@ title: str | None = None        # COLLECTION_TITLE The title for the book being 
 page_list_page: str             # WIKI_BOOK_PAGE   The title of the wikipage that contains the structure of the book.
 pages: list[str]                #                  List of pages from the page_list_page
 _site: Site | None = None       #                  The mwclient object for the wiki
+# fmt: on
 
 
 def getenv_or_bail(envvar: str) -> str:
@@ -82,12 +84,12 @@ def get_site() -> Site:
         An instance of the `Site` class that represents the current website
         being used.
     """
-    global _site                # pylint: disable=global-statement
+    global _site  # pylint: disable=global-statement
     if not _site:
         parsed = urlparse(api_url)
         scheme = parsed.scheme
         host = parsed.netloc
-        path = parsed.path.removesuffix('api.php')
+        path = parsed.path.removesuffix("api.php")
         session = None
 
         _site = Site(host, scheme=scheme, path=path)
@@ -115,7 +117,7 @@ def get_page_list_pages() -> list[WikiPage]:
         A list of WikiPage objects in the intended order.
     """
     page = get_site().pages[page_list_page]
-    book = populate_book(page)
+    book = populate_book(page.text())
     return get_ordered_wiki_pages(book)
 
 
@@ -127,6 +129,4 @@ verify = os.getenv("WIKI_CA_CERT")
 URL_PREFIX = os.getenv("URL_PREFIX")
 title = getenv_or_bail("COLLECTION_TITLE")
 page_list_page = getenv_or_bail("WIKI_BOOK_PAGE")
-pages = [page["page"].link for page in get_page_list_pages()]
-from icecream import ic
-ic(pages)
+pages = [page.page.link for page in get_page_list_pages()]
