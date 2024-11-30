@@ -9,7 +9,7 @@ from io import BytesIO
 from shutil import rmtree
 
 import httpx
-from defusedxml.lxml import fromstring
+from bs4 import BeautifulSoup
 from pikepdf import Name, Object
 from pikepdf import Page as PdfPage
 from pikepdf import Pdf, String
@@ -244,7 +244,7 @@ class Collection:
             logger.info("Rendering url: %s to %s", url, output_file)
 
             page_content = self.fetch_html(url)
-            title = self.extract_text_with_xslt(page_content, "//h1[@id='firstHeading']")
+            title = self.extract_text_with_xslt(page_content, "h1#firstHeading")
             if title is None:
                 title = "Untitled"  # Shouldn't happen with MediaWiki
             self.title_list.append(TocEntry(title=title, page=self.page_num))
@@ -270,12 +270,11 @@ class Collection:
         str or None
             Extracted text if found, otherwise None.
         """
-        tree = fromstring(html)
-        result = tree.xpath(xslt_selector)
+        soup = BeautifulSoup(html, "html.parser")
+        result = soup.select(xslt_selector)
         if result:
-            if isinstance(result[0], tree.__class__):
+            if hasattr(result[0], "text"):
                 return result[0].text
-            return result[0]
         return None
 
     async def output_page(self, page: BrowserPage, output_file: str) -> None:
