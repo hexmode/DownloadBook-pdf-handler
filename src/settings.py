@@ -13,6 +13,7 @@ from src.structure import WikiPage, get_ordered_wiki_pages, populate_book
 
 load_dotenv()
 logging.basicConfig()
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 # fmt: off
                                 # These are set at the end of this file.
@@ -22,7 +23,7 @@ username: str | None = None     # WIKI_USER        The username for the wiki, if
 password: str | None = None     # WIKI_PASS        The password for the username.
 verify: str | None = None       # WIKI_CA_CERT     The path to the certificate authority's cert (if you have a custom CA
                                 #                  or self signed cert).
-title: str | None = None        # COLLECTION_TITLE The title for the book being produced. This will be used for the
+title: str                      # COLLECTION_TITLE The title for the book being produced. This will be used for the
                                 #                  filename as well as in the produced PDF.
 page_list_page: str             # WIKI_BOOK_PAGE   The title of the wikipage that contains the structure of the book.
 pages: list[str]                #                  List of pages from the page_list_page
