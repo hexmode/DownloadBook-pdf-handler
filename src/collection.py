@@ -3,22 +3,26 @@
 import asyncio
 import logging
 import os
+import re
+import tempfile
 from io import BytesIO
 from shutil import rmtree
-import tempfile
-import re
 
-from lxml import etree
 import httpx
-from playwright.async_api import async_playwright, Page as BrowserPage
-from pikepdf import Name, Object, open as pdf_open, Pdf, Page as PdfPage, String
+from defusedxml.lxml import fromstring
+from pikepdf import Name, Object
+from pikepdf import Page as PdfPage
+from pikepdf import Pdf, String
+from pikepdf import open as pdf_open
 from pikepdf._core import PageList
+from playwright.async_api import Page as BrowserPage
+from playwright.async_api import async_playwright
 
-from src.toc import TableOfContents, TocEntry
-from src.common import Common
 import src.settings as setting
+from src.common import Common
+from src.toc import TableOfContents, TocEntry
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -26,10 +30,19 @@ class Collection:
     """
     A class to represent a collection of wiki pages and operations to generate PDFs from them.
 
+    Parameters
+    ----------
+    title : str
+        The title for this collection.
+    output_file : str
+        The file path where the generated PDF will be saved.
+    page_list : list[str]
+        A list of URLs.
+
     Attributes
     ----------
     title : str
-        The title for this collection
+        The title for this collection.
     page_list : list[str]
         A list of URLs that make up the subsequent pages of the book.
     page_num : int
@@ -45,6 +58,18 @@ class Collection:
     output_file: str
 
     def __init__(self, title: str, output_file: str, page_list: list[str]) -> None:
+        """
+        Initialize the collection.
+
+        Parameters
+        ----------
+        title : str
+            The title for this collection.
+        output_file : str
+            The file path where the generated PDF will be saved.
+        page_list : list[str]
+            A list of URLs.
+        """
         self.title = title
         self.page_list = page_list
         self.title_list = []
@@ -66,7 +91,7 @@ class Collection:
         output_list = []
         build_dir = tempfile.mkdtemp()
         for page in self.page_list:
-            sanitized_page = re.sub(r'[\/:*?"<>|]', '_', page)
+            sanitized_page = re.sub(r'[\/:*?"<>|]', "_", page)
             output = build_dir + "/" + sanitized_page
 
             logger.debug("Saving %s to %s.", sanitized_page, output)
@@ -89,11 +114,6 @@ class Collection:
         ----------
         output_list : list of str
             List of PDF file paths to be concatenated.
-
-        Returns
-        -------
-        None
-
         """
         with Pdf.new() as pdf_writer:
             page_offset = 1
@@ -157,6 +177,11 @@ class Collection:
             The header text to add.
         page : PdfPage
             The PDF page where the header will be added.
+
+        Returns
+        -------
+        PdfPage
+            The PDF page with the header added.
         """
         encoded = Common.header(header)
         page.contents_add(encoded, prepend=True)
@@ -168,10 +193,15 @@ class Collection:
 
         Parameters
         ----------
-        header : str
-            The header text to add.
+        footer : str
+            The footer text to add.
         page : PdfPage
             The PDF page where the header will be added.
+
+        Returns
+        -------
+        PdfPage
+            The PDF page with the footer added.
         """
         encoded = Common.footer(footer)
         page.contents_add(encoded, prepend=True)
@@ -191,7 +221,7 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
-        with httpx.Client(verify=setting.verify if setting.verify is not None else True) as client:
+        with httpx.Client(timeout=30, verify=setting.verify if setting.verify is not None else True) as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
             return response.text
@@ -206,11 +236,6 @@ class Collection:
             The URL of the webpage to be rendered into a PDF.
         output_file : str
             The file path where the generated PDF will be saved.
-
-        Returns
-        -------
-        None
-            This function does not return any value.
         """
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
@@ -221,7 +246,7 @@ class Collection:
             page_content = self.fetch_html(url)
             title = self.extract_text_with_xslt(page_content, "//h1[@id='firstHeading']")
             if title is None:
-                title = "Untitled"   # Shouldn't happen with MediaWiki
+                title = "Untitled"  # Shouldn't happen with MediaWiki
             self.title_list.append(TocEntry(title=title, page=self.page_num))
 
             await page.goto(url)
@@ -245,14 +270,11 @@ class Collection:
         str or None
             Extracted text if found, otherwise None.
         """
-        parser = etree.HTMLParser()
-        tree = etree.fromstring(html, parser)
+        tree = fromstring(html)
         result = tree.xpath(xslt_selector)
         if result:
-            # If the result is an element, get its text
-            if isinstance(result[0], etree._Element):
+            if isinstance(result[0], tree.__class__):
                 return result[0].text
-            # If the result is already a text node or string
             return result[0]
         return None
 
@@ -266,15 +288,8 @@ class Collection:
             The page object to produce and render.
         output_file : str
             The path to the output file where the page will be saved.
-        page_num : list of int
-            A list containing a single integer that tracks the cumulative page count.
-
-        Returns
-        -------
-        None
-            This function does not return a value.
         """
-        rendered = await page.pdf(outline=True, format='Letter')
+        rendered = await page.pdf(outline=True, format="Letter")
         if rendered is None:
             logger.info("No pages")
             return
@@ -303,10 +318,6 @@ class Collection:
             The URL to be replaced.
         new_url : str
             The new URL to set in place of the old URL.
-
-        Returns
-        -------
-        None
         """
         annots: Object | None = page.get("/Annots")
         if annots is None or not isinstance(annots, Object):

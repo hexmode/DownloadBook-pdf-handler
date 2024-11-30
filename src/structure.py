@@ -1,12 +1,18 @@
 """Describe the structure of the document."""
 
 # pylint: disable=unsubscriptable-object
-from typing import NamedTuple, TypedDict
 
 
-class WikiLink(NamedTuple):
+class WikiLink:  # pylint: disable=too-few-public-methods
     """
     A named tuple representing a hyperlink and its associated label.
+
+    Parameters
+    ----------
+    link : str
+        The hyperlink represented as a string.
+    label : str
+        The label or text associated with the hyperlink.
 
     Attributes
     ----------
@@ -16,8 +22,22 @@ class WikiLink(NamedTuple):
         The label or text associated with the hyperlink.
     """
 
-    link: str
+    url: str
     label: str
+
+    def __init__(self, link: str, label: str):
+        """
+        Create a WikiLink.
+
+        Parameters
+        ----------
+        link : str
+            The hyperlink represented as a string.
+        label : str
+            The label or text associated with the hyperlink.
+        """
+        self.url = link
+        self.label = label
 
 
 class WikiPage:  # pylint: disable=too-few-public-methods
@@ -26,12 +46,12 @@ class WikiPage:  # pylint: disable=too-few-public-methods
 
     Parameters
     ----------
-    page : WikiLink
+    link : WikiLink
         A WikiLink object that represents a link to a specific wiki page.
 
     Attributes
     ----------
-    page : WikiLink
+    link : WikiLink
         The wiki link for this page.
     content : str
         Content of the wiki page (raw/rendered text or markdown).
@@ -39,25 +59,30 @@ class WikiPage:  # pylint: disable=too-few-public-methods
         Number(s) of the resulting PDF pages (filled after rendering).
     """
 
-    page: WikiLink
+    link: WikiLink
     content: str | None = None
     rendered_pages: list[int] = []
 
-    def __init__(self, page: WikiLink):
+    def __init__(self, link: WikiLink):
         """
         Initialize an instance of the class with a WikiLink object.
 
         Parameters
         ----------
-        page : WikiLink
+        link : WikiLink
             A WikiLink object that represents a link to a specific wiki page.
         """
-        self.page = page
+        self.link = link
 
 
-class Section(TypedDict):
+class Section:  # pylint: disable=too-few-public-methods
     """
     TypedDict representing a section within a chapter.
+
+    Parameters
+    ----------
+    page : WikiPage
+        A WikiPage object.
 
     Attributes
     ----------
@@ -70,29 +95,93 @@ class Section(TypedDict):
     title: str
     wiki_pages: list[WikiPage]
 
+    def __init__(self, page: WikiPage):
+        """
+        Initialize an instance of the class with a WikiLink object.
 
-class Chapter(TypedDict):
+        Parameters
+        ----------
+        page : WikiPage
+            A WikiPage object.
+        """
+        self.title = page.link.label
+        self.wiki_pages = [page]
+
+    def add_page(self, page: WikiPage) -> None:
+        """
+        Add a new WikiPage to the wiki_pages list.
+
+        Parameters
+        ----------
+        page : WikiPage
+            The WikiPage object to be added to the list.
+        """
+        self.wiki_pages.append(page)
+
+
+class Chapter:  # pylint: disable=too-few-public-methods
     """
     TypedDict representing a chapter in the book.
+
+    Parameters
+    ----------
+    page : WikiLink
+        A WikiLink object that represents a link to a specific wiki page.
 
     Attributes
     ----------
     title : str
         Chapter title.
+    wiki_pages : WikiPage
+        The top-level Wiki page
     sections : list[Section]
         Sections within the chapter.
-    wiki_pages : list[WikiPage]
-        Wiki pages directly in the chapter (not nested in sections).
     """
 
     title: str
-    sections: list[Section]
     wiki_pages: list[WikiPage]
+    sections: list[Section]
+
+    def __init__(self, page: WikiPage):
+        """
+        Initialize an instance of the class with a WikiLink object.
+
+        Parameters
+        ----------
+        page : WikiLink
+            A WikiLink object that represents a link to a specific wiki page.
+        """
+        self.title = page.link.label
+        self.wiki_pages = [page]
+        self.sections = []
+
+    def start_section(self, page: WikiPage) -> Section:
+        """
+        Start a section of a chapter.
+
+        Parameters
+        ----------
+        page : WikiLink
+            A WikiLink object that represents a link to a specific wiki page.
+
+        Returns
+        -------
+        Section
+            The section just created.
+        """
+        section = Section(page)
+        self.sections.append(section)
+        return section
 
 
-class Book(TypedDict):
+class Book:  # pylint: disable=too-few-public-methods
     """
     TypedDict representing a book.
+
+    Parameters
+    ----------
+    link : WikiLink
+        The link that provides the title and an introduction to the book.
 
     Attributes
     ----------
@@ -107,6 +196,20 @@ class Book(TypedDict):
     title: str
     front_matter: list[WikiPage] | None
     chapters: list[Chapter]
+
+    def __init__(self, link: WikiLink):
+        """
+        Initialize a book.
+
+        Parameters
+        ----------
+        link : WikiLink
+            The link that provides the title and an introduction to the book.
+        """
+        self.link = link
+        self.front_matter = [WikiPage(link)]
+        self.title = link.label
+        self.chapters = []
 
 
 def parse_line(line: str) -> WikiLink:
@@ -135,6 +238,10 @@ def parse_line(line: str) -> WikiLink:
     return WikiLink(link, label)
 
 
+class NoChapterForSectionError(Exception):
+    """Exception thrown if there is no chapter started yet."""
+
+
 def populate_book(raw_structure: str) -> Book:
     """
     Parse the hierarchical MediaWiki-style structure and generate a Book object.
@@ -155,16 +262,15 @@ def populate_book(raw_structure: str) -> Book:
         A structured representation of the book in the form of a `Book` object. This object contains:
         - "title": The title of the book.
         - "chapters": A list of chapters, where each chapter contains:
-            - "title": The chapter title.
+            - "wiki_page": A wiki page directly under the chapter
+                - "title": The title of the wiki page.
+                - "link": The link associated with the wiki page.
             - "sections": A list of sections within the chapter, where each section contains:
                 - "title": The section title.
                 - "wiki_pages": A list of nested wiki pages (subsections) within the section, where each wiki page
                   contains:
                     - "title": The title of the wiki page.
                     - "link": The link associated with the wiki page.
-            - "wiki_pages": A list of wiki pages directly under the chapter, where each wiki page contains:
-                - "title": The title of the wiki page.
-                - "link": The link associated with the wiki page.
 
     Notes
     -----
@@ -188,6 +294,7 @@ def populate_book(raw_structure: str) -> Book:
         "chapters": [
             {
                 "title": "Chapter 1",
+                "wiki_page": {"title": "Chapter 1", "link": "Chapter_1_Link"},
                 "sections": [
                     {
                         "title": "Section 1.1",
@@ -195,24 +302,19 @@ def populate_book(raw_structure: str) -> Book:
                             {"title": "Subsection 1.1.1", "link": "Subsection_1_1_1_Link"}
                         ]
                     }
-                ],
-                "wiki_pages": [{"title": "Chapter 1", "link": "Chapter_1_Link"}]
+                ]
             },
             {
                 "title": "Chapter 2",
-                "sections": [],
-                "wiki_pages": [{"title": "Chapter 2", "link": "Chapter_2_Link"}]
+                "wiki_page": {"title": "Chapter 2", "link": "Chapter_2_Link"},
+                "sections": []
             }
         ]
     }
     """
     lines = raw_structure.strip().split("\n")
     book_link = parse_line(lines[0].strip())
-    book: Book = {
-        "title": book_link.label,
-        "front_matter": [WikiPage(book_link)],
-        "chapters": [],
-    }
+    book = Book(book_link)
     current_chapter: Chapter | None = None
     current_section: Section | None = None
 
@@ -222,27 +324,27 @@ def populate_book(raw_structure: str) -> Book:
         if line.startswith("* "):  # Chapter-level
             wikilink = parse_line(line[2:])
             if current_chapter:
-                book["chapters"].append(current_chapter)
+                book.chapters.append(current_chapter)
 
-            current_chapter = {"title": wikilink.label, "sections": [], "wiki_pages": []}
-            current_section = None
+            current_chapter = Chapter(WikiPage(wikilink))
 
-        elif line.startswith(":* "):  # Section-level
-            wikilink = parse_line(line[3:])
-            if current_chapter:
-                current_section = {"title": wikilink.label, "wiki_pages": []}
-                current_chapter["sections"].append(current_section)
+        if line.startswith(":* "):  # Section-level
+            wikipage = WikiPage(parse_line(line[3:]))
+            if not current_chapter:
+                raise NoChapterForSectionError(wikipage)
+
+            current_section = current_chapter.start_section(wikipage)
 
         elif line.startswith("::* "):  # WikiPage-level
             wikilink = parse_line(line[4:])
-            wiki_page: WikiPage = WikiPage(wikilink)
+            wiki_page = WikiPage(wikilink)
             if current_section:
-                current_section["wiki_pages"].append(wiki_page)
+                current_section.wiki_pages.append(wiki_page)
             elif current_chapter:
-                current_chapter["wiki_pages"].append(wiki_page)
+                current_chapter.wiki_pages.append(wiki_page)
 
     if current_chapter:
-        book["chapters"].append(current_chapter)
+        book.chapters.append(current_chapter)
 
     return book
 
@@ -299,13 +401,13 @@ def get_ordered_wiki_pages(book: Book) -> list[WikiPage]:
     wiki_pages = []
 
     # Traverse the chapters in the book
-    for chapter in book["chapters"]:
+    for chapter in book.chapters:
         # Add chapter-wide wiki pages first
-        wiki_pages.extend(chapter["wiki_pages"])
+        wiki_pages.extend(chapter.wiki_pages)
 
         # Traverse sections in the chapter
-        for section in chapter["sections"]:
+        for section in chapter.sections:
             # Add section-specific wiki pages
-            wiki_pages.extend(section["wiki_pages"])
+            wiki_pages.extend(section.wiki_pages)
 
     return wiki_pages
