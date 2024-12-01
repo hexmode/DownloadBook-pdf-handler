@@ -36,5 +36,5 @@ def main() -> None:
         logging.fatal("URL_PREFIX envvar must be set.")
         sys.exit()
 
-    page_list = [url_prefix + page for page in setting.pages]
+    page_list = [setting.TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.pages]
     Collection(setting.title, setting.title.replace(" ", "_") + ".pdf", page_list).create_pdf()

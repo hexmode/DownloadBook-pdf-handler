@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from collections import namedtuple
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ logging.getLogger("httpx").setLevel(logging.CRITICAL)
 logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
+TocOffset = namedtuple("TocOffset", ["title", "level"])
 # fmt: off
                                 # These are set at the end of this file.
                                 # EnvVar           Description
@@ -28,7 +30,7 @@ verify: str | None = None       # WIKI_CA_CERT     The path to the certificate a
 title: str                      # COLLECTION_TITLE The title for the book being produced. This will be used for the
                                 #                  filename as well as in the produced PDF.
 page_list_page: str             # WIKI_BOOK_PAGE   The title of the wikipage that contains the structure of the book.
-pages: list[str]                #                  List of pages from the page_list_page
+pages: list[TocOffset]          #                  List of pages from the page_list_page
 _site: Site | None = None       #                  The mwclient object for the wiki
 # fmt: on
 
@@ -131,4 +133,4 @@ password = os.getenv("WIKI_PASS")
 verify = os.getenv("WIKI_CA_CERT")
 title = getenv_or_bail("COLLECTION_TITLE")
 page_list_page = getenv_or_bail("WIKI_BOOK_PAGE")
-pages = [page.link.url for page in get_page_list_pages()]
+pages = [TocOffset(title=page.link.url, level=page.level) for page in get_page_list_pages()]

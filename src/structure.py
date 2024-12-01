@@ -48,11 +48,15 @@ class WikiPage:  # pylint: disable=too-few-public-methods
     ----------
     link : WikiLink
         A WikiLink object that represents a link to a specific wiki page.
+    level : int
+        The Table of Contents level.
 
     Attributes
     ----------
     link : WikiLink
         The wiki link for this page.
+    level : int
+        The Table of Contents level.
     content : str
         Content of the wiki page (raw/rendered text or markdown).
     rendered_pages : list[int]
@@ -60,10 +64,11 @@ class WikiPage:  # pylint: disable=too-few-public-methods
     """
 
     link: WikiLink
+    level: int
     content: str | None = None
     rendered_pages: list[int] = []
 
-    def __init__(self, link: WikiLink):
+    def __init__(self, link: WikiLink, level: int):
         """
         Initialize an instance of the class with a WikiLink object.
 
@@ -71,8 +76,11 @@ class WikiPage:  # pylint: disable=too-few-public-methods
         ----------
         link : WikiLink
             A WikiLink object that represents a link to a specific wiki page.
+        level : int
+            The Table of Contents level.
         """
         self.link = link
+        self.level = level
 
 
 class Section:  # pylint: disable=too-few-public-methods
@@ -207,7 +215,7 @@ class Book:  # pylint: disable=too-few-public-methods
             The link that provides the title and an introduction to the book.
         """
         self.link = link
-        self.front_matter = [WikiPage(link)]
+        self.front_matter = [WikiPage(link, 1)]
         self.title = link.label
         self.chapters = []
 
@@ -326,10 +334,10 @@ def populate_book(raw_structure: str) -> Book:
             if current_chapter:
                 book.chapters.append(current_chapter)
 
-            current_chapter = Chapter(WikiPage(wikilink))
+            current_chapter = Chapter(WikiPage(wikilink, 1))
 
         if line.startswith(":* "):  # Section-level
-            wikipage = WikiPage(parse_line(line[3:]))
+            wikipage = WikiPage(parse_line(line[3:]), 2)
             if not current_chapter:
                 raise NoChapterForSectionError(wikipage)
 
@@ -337,7 +345,7 @@ def populate_book(raw_structure: str) -> Book:
 
         elif line.startswith("::* "):  # WikiPage-level
             wikilink = parse_line(line[4:])
-            wiki_page = WikiPage(wikilink)
+            wiki_page = WikiPage(wikilink, 2)
             if current_section:
                 current_section.wiki_pages.append(wiki_page)
             elif current_chapter:

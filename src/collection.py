@@ -12,7 +12,7 @@ import httpx
 from bs4 import BeautifulSoup
 from pikepdf import Name, Object
 from pikepdf import Page as PdfPage
-from pikepdf import Pdf, String
+from pikepdf import Pdf
 from pikepdf import open as pdf_open
 from pikepdf._core import PageList
 from playwright.async_api import Page as BrowserPage
@@ -44,19 +44,24 @@ class Collection:
         The title for this collection.
     page_list : list[str]
         A list of URLs that make up the subsequent pages of the book.
+    title_list : list[TocEntry]
+        A list of Titles in the collection
     page_num : int
         Internal use for current page count.
+    output_list : list[str]
+        A list of output files.
     output_file : str
         The file path where the generated PDF will be saved.
     """
 
     title: str
-    page_list: list[str]
+    page_list: list[setting.TocOffset]
     title_list: list[TocEntry]
     page_num: int
+    output_list: list[str]
     output_file: str
 
-    def __init__(self, title: str, output_file: str, page_list: list[str]) -> None:
+    def __init__(self, title: str, output_file: str, page_list: list[setting.TocOffset]) -> None:
         """
         Initialize the collection.
 
@@ -73,6 +78,7 @@ class Collection:
         self.page_list = page_list
         self.title_list = []
         self.output_file = output_file
+        self.output_list = []
         self.page_num = 1
 
     def create_pdf(self) -> str:
@@ -87,37 +93,30 @@ class Collection:
         str
             The path to the combined PDF output file.
         """
-        output_list = []
         build_dir = tempfile.mkdtemp()
         for page in self.page_list:
-            sanitized_page = re.sub(r'[\/:*?"<>|]', "_", page)
+            sanitized_page = re.sub(r'[\/:*?"<>|]', "_", page.title)
             output = build_dir + "/" + sanitized_page
 
             logger.debug("Saving %s to %s.", sanitized_page, output)
-            asyncio.run(self.render_pdf(page, output))
-            output_list.append(output)
+            asyncio.run(self.render_pdf(page.title, output, page.level))
 
         for title in self.title_list:
             logger.info(title)
-        self.concat_pages(output_list)
+        self.concat_pages()
         rmtree(build_dir)
         return self.output_file
 
-    def concat_pages(self, output_list: list[str]) -> None:
+    def concat_pages(self) -> None:
         """
         Concatenate PDF pages from a list of file paths into a single PDF.
 
         Insert a Table of Contents as the first page.
-
-        Parameters
-        ----------
-        output_list : list of str
-            List of PDF file paths to be concatenated.
         """
         with Pdf.new() as pdf_writer:
             page_offset = 1
 
-            for pdf_path in output_list:
+            for pdf_path in self.output_list:
                 with Pdf.open(pdf_path) as pdf_reader:
                     pages = pdf_reader.pages
                     logger.debug("Adding %d page(s) from %s to %s.", len(pages), pdf_path, self.output_file)
@@ -125,12 +124,50 @@ class Collection:
                     page_offset += len(pages)
 
             toc = TableOfContents(pdf_writer, self.title_list)
-            toc_page = toc.generate_toc_pdf()
-            self.add_footer("i", toc_page)
-
-            pdf_writer.pages.insert(0, toc_page)
+            toc_pages = toc.generate_toc_pdf()
+            page = 1
+            for toc_page in toc_pages:
+                self.add_footer(self.int_to_roman(page), toc_page)
+                pdf_writer.pages.insert(page - 1, toc_page)
+                page += 1
 
             pdf_writer.save(self.output_file)
+
+    def int_to_roman(self, num: int) -> str:
+        """
+        Given num, produce a lower-case roman numeral equivalent.
+
+        Parameters
+        ----------
+        num : int
+            The number we need a roman numeral for.
+
+        Returns
+        -------
+        str
+            The roman numeral equivalent.
+        """
+        roman_map = [
+            (1000, "m"),
+            (900, "cm"),
+            (500, "d"),
+            (400, "cd"),
+            (100, "c"),
+            (90, "xc"),
+            (50, "l"),
+            (40, "xl"),
+            (10, "x"),
+            (9, "ix"),
+            (5, "v"),
+            (4, "iv"),
+            (1, "i"),
+        ]
+        result = []
+        for value, numeral in roman_map:
+            while num >= value:
+                result.append(numeral)
+                num -= value
+        return "".join(result)
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
@@ -225,7 +262,7 @@ class Collection:
             response.raise_for_status()  # Raise an error for non-2xx responses
             return response.text
 
-    async def render_pdf(self, url: str, output_file: str) -> None:
+    async def render_pdf(self, url: str, output_file: str, level: int) -> None:
         """
         Generate a PDF from a given URL and save it to the specified output file.
 
@@ -235,6 +272,8 @@ class Collection:
             The URL of the webpage to be rendered into a PDF.
         output_file : str
             The file path where the generated PDF will be saved.
+        level : int
+            The level of indention this should get in the ToC.
         """
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
@@ -246,7 +285,8 @@ class Collection:
             title = self.extract_text_with_xslt(page_content, "h1#firstHeading")
             if title is None:
                 title = "Untitled"  # Shouldn't happen with MediaWiki
-            self.title_list.append(TocEntry(title=title, page=self.page_num))
+            self.title_list.append(TocEntry(title=title, page=self.page_num, level=level))
+            self.output_list.append(output_file)
 
             await page.goto(url)
 
@@ -304,7 +344,7 @@ class Collection:
 
             pdf.save(output_file)
 
-    def replace_links_in_page(self, page: PdfPage, old_url: str, new_url: str) -> None:
+    def replace_links_in_page(self, page: PdfPage) -> None:
         """
         Replace links in a PDF page from old_url to new_url.
 
@@ -312,25 +352,17 @@ class Collection:
         ----------
         page : PdfPage
             The PDF page in which to replace links.
-        old_url : str
-            The URL to be replaced.
-        new_url : str
-            The new URL to set in place of the old URL.
         """
         annots: Object | None = page.get("/Annots")
         if annots is None or not isinstance(annots, Object):
             return
 
         for annot in annots.as_list():
-            uri = None
             a_link = annot.get("/A")
             if a_link is not None:
-                uri = a_link.get("/URI")
-            if uri and uri == old_url:
-                logger.info("Updating link: %s to %s", uri, new_url)
-                annot["/A"]["/URI"] = String(new_url)
+                logger.debug(a_link)
 
-    def modify_links(self, pdf_bytes: bytes, old_url: str, new_url: str) -> bytes | None:
+    def modify_links(self, pdf_bytes: bytes) -> bytes | None:
         """
         Modify hyperlinks in a PDF by replacing a specified URL with a new one.
 
@@ -338,10 +370,6 @@ class Collection:
         ----------
         pdf_bytes : bytes
             The byte content of the PDF.
-        old_url : str
-            The URL to be replaced.
-        new_url : str
-            The new URL to replace the existing one.
 
         Returns
         -------
@@ -352,7 +380,7 @@ class Collection:
             result_pdf: bytes
             with pdf_open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages:
-                    self.replace_links_in_page(page, old_url, new_url)
+                    self.replace_links_in_page(page)
                 output = BytesIO()
                 pdf.save(output)
                 result_pdf = output.getvalue()

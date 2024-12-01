@@ -4,13 +4,15 @@ import logging
 from collections import namedtuple
 from textwrap import dedent
 
-from pikepdf import Array, Dictionary, Name, Object, Page, Pdf, Rectangle, Stream
+from pikepdf import Array, Dictionary, Name, Object
+from pikepdf import Page as PdfPage
+from pikepdf import Pdf, Rectangle, Stream
 
 from src.common import Common
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-TocEntry = namedtuple("TocEntry", ["title", "page"])
+TocEntry = namedtuple("TocEntry", ["title", "page", "level"])
 TOC_FONT_SIGN = "/F1"
 TOC_FONT_SIZE = 12
 
@@ -170,14 +172,19 @@ class TableOfContents:
         self.pdf = pdf
         self.title_list = title_list
 
-    def generate_toc_pdf(self) -> Page:
+    def generate_single_toc_page(self, start_idx: int) -> tuple[PdfPage, int]:
         """
         Generate a table of contents PDF and return it to a caller.
 
+        Parameters
+        -----------
+        start_idx : int
+            The index in `title_list` to begin generating the page.
+
         Returns
         -------
-        Page
-            A Page object containing the table of contents page.
+        tuple[PdfPage, int]
+            A list of PdfPage object containing the table of contents page.
         """
         # Define resources dictionary (e.g., fonts)
         resources = self.get_resources()
@@ -187,15 +194,22 @@ class TableOfContents:
         toc_annots = self.pdf.make_indirect(Array())
 
         # Add content stream for each title
-        i = Common.PAGE_HEIGHT - Common.MARGIN
-        for entry in self.title_list:
+        i = Common.PAGE_HEIGHT - Common.MARGIN * 2
+        next_idx = start_idx
+        while next_idx < len(self.title_list):
+            entry = self.title_list[next_idx]
             toc_entry = PdfTocEntry(self.pdf, entry, i)
             toc_text += toc_entry.content
             toc_annots.append(self.pdf.make_indirect(toc_entry.annot))
             i -= Common.LINE_HEIGHT
+            next_idx += 1
 
+            # Break at the bottom of the page
+            if i < Common.MARGIN * 2:
+                break
+
+        # finalize the page
         content = Stream(self.pdf, toc_text)
-
         page_dict = Dictionary(
             {
                 "/Type": Name("/Page"),
@@ -207,7 +221,28 @@ class TableOfContents:
         )
 
         # Add the page to the PDF
-        return Page(self.pdf.make_indirect(page_dict))
+        page = PdfPage(self.pdf.make_indirect(page_dict))
+
+        return page, next_idx
+
+    def generate_toc_pdf(self) -> list[PdfPage]:
+        """
+        Generate a table of contents PDF and return it to a caller.
+
+        Returns
+        -------
+        list[PdfPage]
+            A list of PdfPage object containing the table of contents page.
+        """
+        toc_pages = []
+        next_idx = 0
+
+        # Generate single pages with offsets until all entries are processed
+        while next_idx < len(self.title_list):
+            page, next_idx = self.generate_single_toc_page(next_idx)
+            toc_pages.append(page)
+
+        return toc_pages
 
     def get_resources(self) -> Dictionary:
         """
