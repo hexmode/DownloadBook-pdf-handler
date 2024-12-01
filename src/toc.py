@@ -1,22 +1,32 @@
 """Table of Contents."""
+
+import logging
 from collections import namedtuple
 from textwrap import dedent
-import logging
 
-from pikepdf import Array, Dictionary, Name, Object, Pdf, Page, Rectangle, Stream
+from pikepdf import Array, Dictionary, Name, Object, Page, Pdf, Rectangle, Stream
 
 from src.common import Common
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-TocEntry = namedtuple('TocEntry', ['title', 'page'])
-TOC_FONT_SIGN = '/F1'
+TocEntry = namedtuple("TocEntry", ["title", "page"])
+TOC_FONT_SIGN = "/F1"
 TOC_FONT_SIZE = 12
 
 
 class PdfTocEntry:
     """
     Represent a PDF Table of Contents (TOC) entry.
+
+    Parameters
+    ----------
+    pdf : Pdf
+        The PDF object for which the TOC entry is created.
+    entry : TocEntry
+        The TOC entry specifying title, page, etc.
+    offset : int
+        The vertical offset for the TOC entry in the PDF.
 
     Attributes
     ----------
@@ -50,7 +60,6 @@ class PdfTocEntry:
         """
         self.pdf = pdf
         self.offset = offset
-        logger.debug("Setting up entry: %s", type(entry))
         self.content = self.get_content(entry)
         self.annot = self.get_annot(entry)
 
@@ -68,7 +77,7 @@ class PdfTocEntry:
         str
             The escaped string.
         """
-        return value.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+        return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
     def get_content(self, entry: TocEntry) -> bytes:
         """
@@ -85,13 +94,15 @@ class PdfTocEntry:
             The encoded PDF content for the TOC entry.
         """
         logger.debug("Making Toc content entry for %s to %d", entry.title, entry.page)
-        return dedent(f"""q
+        return dedent(
+            f"""q
             BT
             {TOC_FONT_SIGN} {TOC_FONT_SIZE} Tf
             {Common.ID_TRANSFORM} {Common.MARGIN} {self.offset} Tm
             ({self.escape_pdf_text(entry.title)} - {entry.page}) Tj
             ET
-            Q""").encode('utf-8')
+            Q"""
+        ).encode("utf-8")
 
     def get_annot(self, entry: TocEntry) -> Object:
         """
@@ -107,35 +118,39 @@ class PdfTocEntry:
         Object
             The annotation dictionary for the TOC entry.
         """
-        return Dictionary({
-            '/Type': Name('/Annot'),
-            '/Subtype': Name('/Link'),                  # Define this as a Link annotation
-            '/Rect': Rectangle(                         # Clickable area
-                Common.MARGIN, self.offset - (Common.LINE_HEIGHT / 2),
-                300, self.offset + (Common.LINE_HEIGHT / 2)),
-            '/Border': [0, 0, 0],                       # No visible border for the link
-            '/A': Dictionary({
-                '/S': Name('/GoTo'),                    # GoTo action type
-                '/D': [self.pdf.pages[entry.page - 1].obj, Name('/Fit')]   # Destination to target page
-            })
-        })
+        return Dictionary(
+            {
+                "/Type": Name("/Annot"),
+                "/Subtype": Name("/Link"),  # Define this as a Link annotation
+                "/Rect": Rectangle(  # Clickable area
+                    Common.MARGIN, self.offset - (Common.LINE_HEIGHT / 2), 300, self.offset + (Common.LINE_HEIGHT / 2)
+                ),
+                "/Border": [0, 0, 0],  # No visible border for the link
+                "/A": Dictionary(
+                    {
+                        "/S": Name("/GoTo"),  # GoTo action type
+                        "/D": [self.pdf.pages[entry.page - 1].obj, Name("/Fit")],  # Destination to target page
+                    }
+                ),
+            }
+        )
 
 
 class TableOfContents:
     """
     A helper class to generate a Table of Contents (ToC) PDF.
 
+    Parameters
+    ----------
+    pdf : Pdf
+        Pikepdf object used to set up the ToC.
+    title_list : list[TocEntry]
+        A list of titles to be included in the Table of Contents.
+
     Attributes
     ----------
     title_list : list of str
         A list of titles to be included in the Table of Contents.
-
-    Methods
-    -------
-    __init__(title_list)
-        Initializes the TableOfContents with a list of titles.
-    generate_toc_pdf() -> Pdf
-        Generates and returns a PDF object containing the table of contents.
     """
 
     title_list: list[TocEntry]
@@ -147,6 +162,8 @@ class TableOfContents:
 
         Parameters
         ----------
+        pdf : Pdf
+            Pikepdf object used to set up the ToC.
         title_list : list[TocEntry]
             A list of titles to be included in the Table of Contents.
         """
@@ -179,13 +196,15 @@ class TableOfContents:
 
         content = Stream(self.pdf, toc_text)
 
-        page_dict = Dictionary({
-            '/Type': Name('/Page'),
-            '/MediaBox': Array([0, 0, Common.PAGE_WIDTH, Common.PAGE_HEIGHT]),
-            '/Resources': self.pdf.make_indirect(resources),
-            '/Contents': self.pdf.make_indirect(content),
-            '/Annots': self.pdf.make_indirect(toc_annots)
-        })
+        page_dict = Dictionary(
+            {
+                "/Type": Name("/Page"),
+                "/MediaBox": Array([0, 0, Common.PAGE_WIDTH, Common.PAGE_HEIGHT]),
+                "/Resources": self.pdf.make_indirect(resources),
+                "/Contents": self.pdf.make_indirect(content),
+                "/Annots": self.pdf.make_indirect(toc_annots),
+            }
+        )
 
         # Add the page to the PDF
         return Page(self.pdf.make_indirect(page_dict))
@@ -199,9 +218,7 @@ class TableOfContents:
         Dictionary
             A dictionary containing the necessary resources for the PDF, including font information.
         """
-        font_ref = self.pdf.make_indirect(Common.font_dictionary('Helvetica-Bold'))
+        font_ref = self.pdf.make_indirect(Common.font_dictionary("Helvetica-Bold"))
 
         # Create a valid resources dictionary
-        return Dictionary({
-            '/Font': Dictionary({TOC_FONT_SIGN: font_ref})
-        })
+        return Dictionary({"/Font": Dictionary({TOC_FONT_SIGN: font_ref})})

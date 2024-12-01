@@ -22,7 +22,6 @@ import src.settings as setting
 from src.common import Common
 from src.toc import TableOfContents, TocEntry
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 

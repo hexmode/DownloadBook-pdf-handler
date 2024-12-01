@@ -12,8 +12,10 @@ from requests import Session
 from src.structure import WikiPage, get_ordered_wiki_pages, populate_book
 
 load_dotenv()
-logging.basicConfig()
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("httpx").setLevel(logging.CRITICAL)
+logging.getLogger("httpcore").setLevel(logging.CRITICAL)
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 # fmt: off
                                 # These are set at the end of this file.
