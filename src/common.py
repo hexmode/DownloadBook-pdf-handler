@@ -35,7 +35,7 @@ class Common:
 
         Returns
         -------
-        str
+        bytes
             The formatted header.
         """
         return f"""q
@@ -62,7 +62,7 @@ class Common:
 
         Returns
         -------
-        str
+        bytes
             The formatted footer.
         """
         return f"""q
@@ -116,3 +116,40 @@ class Common:
         # Assume a typical font width of 0.5 times the font size per character (can be adjusted for your font)
         avg_char_width = 0.5 * font_size
         return len(text) * avg_char_width
+
+    @staticmethod
+    def int_to_roman(num: int) -> str:
+        """
+        Given num, produce a lower-case roman numeral equivalent.
+
+        Parameters
+        ----------
+        num : int
+            The number we need a roman numeral for.
+
+        Returns
+        -------
+        str
+            The roman numeral equivalent.
+        """
+        roman_map = [
+            (1000, "m"),
+            (900, "cm"),
+            (500, "d"),
+            (400, "cd"),
+            (100, "c"),
+            (90, "xc"),
+            (50, "l"),
+            (40, "xl"),
+            (10, "x"),
+            (9, "ix"),
+            (5, "v"),
+            (4, "iv"),
+            (1, "i"),
+        ]
+        result = []
+        for value, numeral in roman_map:
+            while num >= value:
+                result.append(numeral)
+                num -= value
+        return "".join(result)

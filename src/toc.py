@@ -12,7 +12,7 @@ from src.common import Common
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-TocEntry = namedtuple("TocEntry", ["title", "page", "level"])
+TocEntry = namedtuple("TocEntry", ["url", "title", "page", "level"])
 TOC_FONT_SIGN = "/F1"
 TOC_FONT_SIZE = 12
 
@@ -241,7 +241,7 @@ class TableOfContents:
         list[PdfPage]
             A list of PdfPage object containing the table of contents page.
         """
-        toc_pages = []
+        toc_pages: list[PdfPage] = []
         next_idx = 0
 
         # Generate single pages with offsets until all entries are processed

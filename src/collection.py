@@ -127,47 +127,12 @@ class Collection:
             toc_pages = toc.generate_toc_pdf()
             page = 1
             for toc_page in toc_pages:
-                self.add_footer(self.int_to_roman(page), toc_page)
+                self.ensure_resources(toc_page)
+                self.add_footer(Common.int_to_roman(page), toc_page)
                 pdf_writer.pages.insert(page - 1, toc_page)
                 page += 1
 
             pdf_writer.save(self.output_file)
-
-    def int_to_roman(self, num: int) -> str:
-        """
-        Given num, produce a lower-case roman numeral equivalent.
-
-        Parameters
-        ----------
-        num : int
-            The number we need a roman numeral for.
-
-        Returns
-        -------
-        str
-            The roman numeral equivalent.
-        """
-        roman_map = [
-            (1000, "m"),
-            (900, "cm"),
-            (500, "d"),
-            (400, "cd"),
-            (100, "c"),
-            (90, "xc"),
-            (50, "l"),
-            (40, "xl"),
-            (10, "x"),
-            (9, "ix"),
-            (5, "v"),
-            (4, "iv"),
-            (1, "i"),
-        ]
-        result = []
-        for value, numeral in roman_map:
-            while num >= value:
-                result.append(numeral)
-                num -= value
-        return "".join(result)
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
@@ -285,7 +250,7 @@ class Collection:
             title = self.extract_text_with_xslt(page_content, "h1#firstHeading")
             if title is None:
                 title = "Untitled"  # Shouldn't happen with MediaWiki
-            self.title_list.append(TocEntry(title=title, page=self.page_num, level=level))
+            self.title_list.append(TocEntry(url=url, title=title, page=self.page_num, level=level))
             self.output_list.append(output_file)
 
             await page.goto(url)
