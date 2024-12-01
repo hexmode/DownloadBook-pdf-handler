@@ -96,11 +96,12 @@ class PdfTocEntry:
             The encoded PDF content for the TOC entry.
         """
         logger.debug("Making Toc content entry for %s to %d", entry.title, entry.page)
+        left_margin = Common.MARGIN * entry.level
         return dedent(
             f"""q
             BT
             {TOC_FONT_SIGN} {TOC_FONT_SIZE} Tf
-            {Common.ID_TRANSFORM} {Common.MARGIN} {self.offset} Tm
+            {Common.ID_TRANSFORM} {left_margin} {self.offset} Tm
             ({self.escape_pdf_text(entry.title)} - {entry.page}) Tj
             ET
             Q"""
@@ -120,12 +121,18 @@ class PdfTocEntry:
         Object
             The annotation dictionary for the TOC entry.
         """
+        left_margin = Common.MARGIN * entry.level
+        text_width = Common.calculate_text_width(entry.title, TOC_FONT_SIZE)  # Calculate rendered width of the text
+        total_width = text_width + Common.calculate_text_width(f" - {entry.page}", TOC_FONT_SIZE)  # Include page #
         return Dictionary(
             {
                 "/Type": Name("/Annot"),
                 "/Subtype": Name("/Link"),  # Define this as a Link annotation
                 "/Rect": Rectangle(  # Clickable area
-                    Common.MARGIN, self.offset - (Common.LINE_HEIGHT / 2), 300, self.offset + (Common.LINE_HEIGHT / 2)
+                    left_margin,
+                    self.offset - (Common.LINE_HEIGHT / 2),
+                    left_margin + total_width,
+                    self.offset + (Common.LINE_HEIGHT / 2),
                 ),
                 "/Border": [0, 0, 0],  # No visible border for the link
                 "/A": Dictionary(
@@ -177,7 +184,7 @@ class TableOfContents:
         Generate a table of contents PDF and return it to a caller.
 
         Parameters
-        -----------
+        ----------
         start_idx : int
             The index in `title_list` to begin generating the page.
 
