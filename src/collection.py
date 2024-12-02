@@ -10,7 +10,7 @@ from shutil import rmtree
 
 import httpx
 from bs4 import BeautifulSoup
-from pikepdf import Name, Object
+from pikepdf import Dictionary, Name, Object
 from pikepdf import Page as PdfPage
 from pikepdf import Pdf
 from pikepdf import open as pdf_open
@@ -52,6 +52,8 @@ class Collection:
         A list of output files.
     output_file : str
         The file path where the generated PDF will be saved.
+    url_to_page : dict[str, int]
+        Mapping of urls to pages
     """
 
     title: str
@@ -60,6 +62,7 @@ class Collection:
     page_num: int
     output_list: list[str]
     output_file: str
+    url_to_page: dict[str, int]
 
     def __init__(self, title: str, output_file: str, page_list: list[setting.TocOffset]) -> None:
         """
@@ -77,8 +80,9 @@ class Collection:
         self.title = title
         self.page_list = page_list
         self.title_list = []
-        self.output_file = output_file
         self.output_list = []
+        self.url_to_page = {}
+        self.output_file = output_file
         self.page_num = 1
 
     def create_pdf(self) -> str:
@@ -152,6 +156,8 @@ class Collection:
             self.ensure_resources(page)
             self.add_header(self.title, page)
             self.add_footer(f"Page {page_number}", page)
+            self.replace_links_in_page(page)
+
             writer.pages.append(page)
             page_number += 1
 
@@ -251,6 +257,8 @@ class Collection:
             if title is None:
                 title = "Untitled"  # Shouldn't happen with MediaWiki
             self.title_list.append(TocEntry(url=url, title=title, page=self.page_num, level=level))
+            self.url_to_page[url] = self.page_num + 1
+
             self.output_list.append(output_file)
 
             await page.goto(url)
@@ -311,46 +319,47 @@ class Collection:
 
     def replace_links_in_page(self, page: PdfPage) -> None:
         """
-        Replace links in a PDF page from old_url to new_url.
+        Replace links to the wiki URL with links to the corresponding PDF page numbers.
+
+        This updates any instances of a URL in the PDF content streams, replacing them with
+        links pointing to internal PDF pages based on self.title_list.
 
         Parameters
         ----------
         page : PdfPage
-            The PDF page in which to replace links.
+            The page to replace links in.
         """
-        annots: Object | None = page.get("/Annots")
-        if annots is None or not isinstance(annots, Object):
+        if "/Annots" not in page:
             return
+        for annot in page["/Annots"]:
+            subtype = annot["/Subtype"]
+            a = annot.get("/A", None) if subtype == "/Link" else None
+            uri = a.get("/URI", None) if a is not None else None
 
-        for annot in annots.as_list():
-            a_link = annot.get("/A")
-            if a_link is not None:
-                logger.debug(a_link)
+            if uri in self.url_to_page:
+                self.replace_url_link(uri, annot)
 
-    def modify_links(self, pdf_bytes: bytes) -> bytes | None:
+    def replace_url_link(self, uri: str, annot_obj: Object) -> None:
         """
-        Modify hyperlinks in a PDF by replacing a specified URL with a new one.
+        Replace a URI with an internal link if it matches an entry in `url_to_page`.
+
+        This function modifies the provided `annot_obj` so that it points to an
+        internal destination in the document instead of an external URI. The
+        internal destination is determined based on the `url_to_page` mapping.
 
         Parameters
         ----------
-        pdf_bytes : bytes
-            The byte content of the PDF.
-
-        Returns
-        -------
-        bytes | None
-            The modified PDF content as bytes if successful, otherwise None.
+        uri : str
+            The URI to be replaced if it exists in the `url_to_page` dictionary.
+        annot_obj : dict
+            The annotation object representing the link. This object will be
+            modified in-place to include a GoTo action that points to an internal
+            destination in the document.
         """
-        try:
-            result_pdf: bytes
-            with pdf_open(BytesIO(pdf_bytes)) as pdf:
-                for page in pdf.pages:
-                    self.replace_links_in_page(page)
-                output = BytesIO()
-                pdf.save(output)
-                result_pdf = output.getvalue()
-
-            return result_pdf
-        except Exception as e:  # pylint: disable=W0718
-            logger.error("Failed to modify links: %s", str(e))
-            return None
+        logger.info("Fixing link: %s -> page %s", uri, self.url_to_page[uri])
+        annot_obj["/A"] = Dictionary(
+            {
+                "/S": Name("/GoTo"),  # GoTo action instead of URI
+                "/D": [self.url_to_page[uri], Name("/Fit")],  # Link to the destination page
+            }
+        )
