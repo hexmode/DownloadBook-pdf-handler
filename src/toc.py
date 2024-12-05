@@ -122,8 +122,8 @@ class PdfTocEntry:
             The annotation dictionary for the TOC entry.
         """
         left_margin = Common.MARGIN * entry.level
-        text_width = Common.calculate_text_width(entry.title, TOC_FONT_SIZE)  # Calculate rendered width of the text
-        total_width = text_width + Common.calculate_text_width(f" - {entry.page}", TOC_FONT_SIZE)  # Include page #
+        text_width = Common.text_width(entry.title, TOC_FONT_SIZE)  # Calculate rendered width of the text
+        total_width = text_width + Common.text_width(f" - {entry.page}", TOC_FONT_SIZE)  # Include page #
         return Dictionary(
             {
                 "/Type": Name("/Annot"),
@@ -201,7 +201,7 @@ class TableOfContents:
         toc_annots = self.pdf.make_indirect(Array())
 
         # Add content stream for each title
-        i = Common.PAGE_HEIGHT - Common.MARGIN * 2
+        i = Common.PAGE_HEIGHT - int(Common.MARGIN * 2)
         next_idx = start_idx
         while next_idx < len(self.title_list):
             entry = self.title_list[next_idx]
@@ -260,7 +260,7 @@ class TableOfContents:
         Dictionary
             A dictionary containing the necessary resources for the PDF, including font information.
         """
-        font_ref = self.pdf.make_indirect(Common.font_dictionary("Helvetica-Bold"))
+        font_ref = self.pdf.make_indirect(Common.font_dictionary(Common.FONT_FAMILY))
 
         # Create a valid resources dictionary
         return Dictionary({"/Font": Dictionary({TOC_FONT_SIGN: font_ref})})

@@ -407,6 +407,8 @@ def get_ordered_wiki_pages(book: Book) -> list[WikiPage]:
     ]
     """
     wiki_pages = []
+    if book.front_matter is not None:
+        wiki_pages.extend(book.front_matter)
 
     # Traverse the chapters in the book
     for chapter in book.chapters:

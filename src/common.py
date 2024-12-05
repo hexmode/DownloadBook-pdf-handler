@@ -1,6 +1,7 @@
 """Some common things to be shared."""
 
 from pikepdf import Dictionary, Name
+from PIL import ImageFont
 
 
 class Common:
@@ -12,12 +13,38 @@ class Common:
     HF_FONT_SIGN = "/F2"
     MARGIN = 72
 
+    FONT_FAMILY = "Arial"
+    FONT_FAMILY_PATH = "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf"
+
     # 8.5x11 inches
     PAGE_HEIGHT = 792
     PAGE_WIDTH = 612
 
     # Identity transform
     ID_TRANSFORM = "1 0 0 1"
+
+    @staticmethod
+    def text_width(text: str, font_size: int, font_path: str = FONT_FAMILY_PATH) -> float:
+        """
+        Calculate the width of a given text string when rendered with a specific font and size.
+
+        Parameters
+        ----------
+        text : str
+            The text string whose width is to be measured.
+        font_size : int
+            The size of the font to be used for rendering the text.
+        font_path : str, optional
+            The path to the font file to be used for rendering the text.
+            Defaults to FONT_FAMILY_PATH.
+
+        Returns
+        -------
+        float
+            The width of the rendered text in pixels.
+        """
+        font = ImageFont.truetype(font_path, font_size)
+        return font.getlength(text)
 
     @staticmethod
     def header(text: str, font_size: int = HF_FONT_SIZE, font_sign: str = HF_FONT_SIGN) -> bytes:
@@ -65,16 +92,19 @@ class Common:
         bytes
             The formatted footer.
         """
+        text_width = Common.text_width(text, font_size)
+        x_position = Common.PAGE_WIDTH - text_width - Common.MARGIN
+
         return f"""q
                BT
                {font_sign} {font_size} Tf
-               {Common.ID_TRANSFORM} {Common.MARGIN} {Common.MARGIN - font_size} Tm
+               {Common.ID_TRANSFORM} {x_position} {Common.MARGIN - font_size} Tm
                ({text}) Tj
                ET
                Q""".encode()
 
     @staticmethod
-    def font_dictionary(font_name: str = "Helvetica") -> Dictionary:
+    def font_dictionary(font_name: str = FONT_FAMILY) -> Dictionary:
         """
         Return a dictionary representing a standard PDF font.
 
@@ -95,27 +125,6 @@ class Common:
                 "/BaseFont": Name(f"/{font_name}"),  # Standard PDF font
             }
         )
-
-    @staticmethod
-    def calculate_text_width(text: str, font_size: int) -> float:
-        """
-        Calculate the width of rendered text in PDF space.
-
-        Parameters
-        ----------
-        text : str
-            The string to measure.
-        font_size : int
-            The font size of the text.
-
-        Returns
-        -------
-        float
-            The width of the text in points, suitable for PDF dimensions.
-        """
-        # Assume a typical font width of 0.5 times the font size per character (can be adjusted for your font)
-        avg_char_width = 0.5 * font_size
-        return len(text) * avg_char_width
 
     @staticmethod
     def int_to_roman(num: int) -> str:
