@@ -223,7 +223,7 @@ class TableOfContents:
         toc_text = b""
         if start_idx != 0:
             # Add content stream
-            toc_text = Common.header("Table of Contents", Common.HF_FONT_SIZE, TOC_FONT_SIGN, "left")
+            toc_text = Common.header("Table of Contents", Common.HF_FONT_SIZE, TOC_FONT_SIGN)
 
         if start_idx == 0:
             toc_text += self.get_toc_title()
