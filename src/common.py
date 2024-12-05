@@ -47,7 +47,7 @@ class Common:
         return font.getlength(text)
 
     @staticmethod
-    def header(text: str, font_size: int = HF_FONT_SIZE, font_sign: str = HF_FONT_SIGN) -> bytes:
+    def header(text: str, font_size: int = HF_FONT_SIZE, font_sign: str = HF_FONT_SIGN, align: str = "right") -> bytes:
         """
         Return the header as bytes.
 
@@ -59,22 +59,32 @@ class Common:
             The size of the font.
         font_sign : str
             The PDF reference for this font.
+        align : str
+            "right" or "left" alignment.
 
         Returns
         -------
         bytes
             The formatted header.
         """
+        position_line = f"{Common.ID_TRANSFORM} {Common.MARGIN} {Common.PAGE_HEIGHT - Common.MARGIN + font_size} Tm"
+        if align == "right":
+            text_width = Common.text_width(text, font_size)
+            x_position = Common.PAGE_WIDTH - text_width - Common.MARGIN
+            position_line = (
+                f"{Common.ID_TRANSFORM} {x_position} " + f"{Common.PAGE_HEIGHT - Common.MARGIN + 2 * font_size} Tm"
+            )
+
         return f"""q
                BT
                {font_sign} {font_size} Tf
-               {Common.ID_TRANSFORM} {Common.MARGIN} {Common.PAGE_HEIGHT - Common.MARGIN + 2 * font_size} Tm
+               {position_line}
                ({text}) Tj
                ET
                Q""".encode()
 
     @staticmethod
-    def footer(text: str, font_size: int = HF_FONT_SIZE, font_sign: str = HF_FONT_SIGN) -> bytes:
+    def footer(text: str, font_size: int = HF_FONT_SIZE, font_sign: str = HF_FONT_SIGN, align: str = "right") -> bytes:
         """
         Return the footer as bytes.
 
@@ -86,19 +96,24 @@ class Common:
             The size of the font.
         font_sign : str
             The PDF reference for this font.
+        align : str
+            "right" or "left" alignment.
 
         Returns
         -------
         bytes
             The formatted footer.
         """
-        text_width = Common.text_width(text, font_size)
-        x_position = Common.PAGE_WIDTH - text_width - Common.MARGIN
+        position_line = f"{Common.ID_TRANSFORM} {Common.MARGIN} {Common.MARGIN - font_size} Tm"
+        if align == "right":
+            text_width = Common.text_width(text, font_size)
+            x_position = Common.PAGE_WIDTH - text_width - Common.MARGIN
+            position_line = f"{Common.ID_TRANSFORM} {x_position} {Common.MARGIN - font_size} Tm"
 
         return f"""q
                BT
                {font_sign} {font_size} Tf
-               {Common.ID_TRANSFORM} {x_position} {Common.MARGIN - font_size} Tm
+               {position_line}
                ({text}) Tj
                ET
                Q""".encode()

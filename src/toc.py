@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 TocEntry = namedtuple("TocEntry", ["url", "title", "page", "level"])
 TOC_FONT_SIGN = "/F1"
 TOC_FONT_SIZE = 12
+TOC_FONT_HEADER_SIZE = 18
 
 
 class PdfTocEntry:
@@ -124,24 +125,26 @@ class PdfTocEntry:
         left_margin = Common.MARGIN * entry.level
         text_width = Common.text_width(entry.title, TOC_FONT_SIZE)  # Calculate rendered width of the text
         total_width = text_width + Common.text_width(f" - {entry.page}", TOC_FONT_SIZE)  # Include page #
-        return Dictionary(
-            {
-                "/Type": Name("/Annot"),
-                "/Subtype": Name("/Link"),  # Define this as a Link annotation
-                "/Rect": Rectangle(  # Clickable area
-                    left_margin,
-                    self.offset - (Common.LINE_HEIGHT / 2),
-                    left_margin + total_width,
-                    self.offset + (Common.LINE_HEIGHT / 2),
-                ),
-                "/Border": [0, 0, 0],  # No visible border for the link
-                "/A": Dictionary(
-                    {
-                        "/S": Name("/GoTo"),  # GoTo action type
-                        "/D": [self.pdf.pages[entry.page - 1].obj, Name("/Fit")],  # Destination to target page
-                    }
-                ),
-            }
+        return self.pdf.make_indirect(
+            Dictionary(
+                {
+                    "/Type": Name("/Annot"),
+                    "/Subtype": Name("/Link"),  # Define this as a Link annotation
+                    "/Rect": Rectangle(  # Clickable area
+                        left_margin,
+                        self.offset - (Common.LINE_HEIGHT / 2),
+                        left_margin + total_width,
+                        self.offset + (Common.LINE_HEIGHT / 2),
+                    ),
+                    "/Border": [0, 0, 0],  # No visible border for the link
+                    "/A": Dictionary(
+                        {
+                            "/S": Name("/GoTo"),  # GoTo action type
+                            "/D": [self.pdf.pages[entry.page - 1].obj, Name("/Fit")],  # Destination to target page
+                        }
+                    ),
+                }
+            )
         )
 
 
@@ -179,6 +182,26 @@ class TableOfContents:
         self.pdf = pdf
         self.title_list = title_list
 
+    def get_toc_title(self) -> bytes:
+        """
+        Generate a title for the Table of Contents (TOC) in PDF format.
+
+        Returns
+        -------
+        bytes
+            A byte-encoded string representing the PDF commands to render
+            the TOC title in the specified font and layout.
+        """
+        return dedent(
+            f"""q
+                BT
+                {TOC_FONT_SIGN} {TOC_FONT_HEADER_SIZE} Tf
+                {Common.ID_TRANSFORM} {Common.MARGIN} {Common.PAGE_HEIGHT - Common.MARGIN} Tm
+                (Table of Contents) Tj
+                ET
+                Q"""
+        ).encode("utf-8")
+
     def generate_single_toc_page(self, start_idx: int) -> tuple[PdfPage, int]:
         """
         Generate a table of contents PDF and return it to a caller.
@@ -196,23 +219,30 @@ class TableOfContents:
         # Define resources dictionary (e.g., fonts)
         resources = self.get_resources()
 
-        # Add content stream
-        toc_text = Common.header("Table of Contents", TOC_FONT_SIZE, TOC_FONT_SIGN)
+        toc_position = Common.PAGE_HEIGHT - Common.MARGIN - 2 * TOC_FONT_HEADER_SIZE
+        toc_text = b""
+        if start_idx != 0:
+            # Add content stream
+            toc_text = Common.header("Table of Contents", Common.HF_FONT_SIZE, TOC_FONT_SIGN, "left")
+
+        if start_idx == 0:
+            toc_text += self.get_toc_title()
+            toc_position += TOC_FONT_SIZE
+
         toc_annots = self.pdf.make_indirect(Array())
 
         # Add content stream for each title
-        i = Common.PAGE_HEIGHT - int(Common.MARGIN * 2)
         next_idx = start_idx
         while next_idx < len(self.title_list):
             entry = self.title_list[next_idx]
-            toc_entry = PdfTocEntry(self.pdf, entry, i)
+            toc_entry = PdfTocEntry(self.pdf, entry, toc_position)
             toc_text += toc_entry.content
-            toc_annots.append(self.pdf.make_indirect(toc_entry.annot))
-            i -= Common.LINE_HEIGHT
+            toc_annots.append(toc_entry.annot)
+            toc_position -= Common.LINE_HEIGHT
             next_idx += 1
 
             # Break at the bottom of the page
-            if i < Common.MARGIN * 2:
+            if toc_position < Common.MARGIN + Common.LINE_HEIGHT:
                 break
 
         # finalize the page
