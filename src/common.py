@@ -1,5 +1,8 @@
 """Some common things to be shared."""
 
+import os
+from pathlib import Path
+
 from pikepdf import Dictionary, Name
 from PIL import ImageFont
 
@@ -14,7 +17,7 @@ class Common:
     MARGIN = 72
 
     FONT_FAMILY = "Arial"
-    FONT_FAMILY_PATH = "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf"
+    FONT_FAMILY_PATH = Path(__file__).parent.parent / "font" / "Arimo" / "static" / "Arimo-Regular.ttf"
 
     # 8.5x11 inches
     PAGE_HEIGHT = 792
@@ -43,6 +46,8 @@ class Common:
         float
             The width of the rendered text in pixels.
         """
+        if not os.path.exists(font_path):
+            raise FileNotFoundError(font_path)
         font = ImageFont.truetype(font_path, font_size)
         return font.getlength(text)
 

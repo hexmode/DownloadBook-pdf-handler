@@ -136,7 +136,10 @@ class Collection:
                 pdf_writer.pages.insert(page - 1, toc_page)
                 page += 1
 
-            pdf_writer.save(self.output_file)
+            try:
+                pdf_writer.save(self.output_file)
+            except OSError as e:
+                logger.fatal(f"OSError when trying to save. Does the name contain bad characters? {self.output_file}")
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
