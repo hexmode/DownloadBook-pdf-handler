@@ -146,10 +146,6 @@ class SimpleUI:
         self.logger = logging.getLogger("SimpleUI")
         self.logger.setLevel(logging.DEBUG)
 
-        # Create a console handler and set level to debug
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
         th = TextHandler(self.root, self.log_text)
@@ -159,8 +155,13 @@ class SimpleUI:
         # Add the handlers to the logger
         self.logger.addHandler(th)
 
-    # Function to update the UI with log messages from the queue
     def update_ui(self):
+        """
+        Updates the user interface by fetching log messages from the queue
+        and appending them to the log text widget. The method checks the
+        queue non-blocking and schedules itself to run again after a
+        specified interval.
+        """
         try:
             # Get log message from the queue (non-blocking)
             while True:
