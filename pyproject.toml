@@ -8,6 +8,7 @@ license = "gpl-3-or-later"
 readme = "README.md"
 
 [tool.poetry.scripts]
+render_pdf = "src.render_pdf:main"
 print_mw_collection = "src.print_mw_collection:main"
 extract_font_sizes = "src.extract_font_sizes:main"
 extract_urls = "src.extract_urls:main"

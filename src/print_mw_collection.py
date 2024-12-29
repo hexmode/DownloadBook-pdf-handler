@@ -8,7 +8,7 @@ import src.settings as setting
 from src.collection import Collection
 
 
-def main() -> None:
+def main(logger: logging.Logger) -> None:
     """
     Generate PDFs for a list of wiki pages.
 
@@ -32,9 +32,9 @@ def main() -> None:
     This will generate PDF files for each page in the `pages` list.
     """
     url_prefix = os.getenv("URL_PREFIX")
-    if url_prefix is None:
-        logging.fatal("URL_PREFIX envvar must be set.")
+    if url_prefix is None or url_prefix == "":
+        logger.fatal("URL_PREFIX envvar must be set.")
         sys.exit()
 
     page_list = [setting.TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.pages]
-    Collection(setting.title, setting.title.replace(" ", "_") + ".pdf", page_list).create_pdf()
+    Collection(setting.title, setting.title.replace(" ", "_") + ".pdf", page_list, logger).create_pdf()

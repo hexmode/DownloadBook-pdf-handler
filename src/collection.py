@@ -22,8 +22,6 @@ import src.settings as setting
 from src.common import Common
 from src.toc import TableOfContents, TocEntry
 
-logger = logging.getLogger(__name__)
-
 
 class Collection:
     """
@@ -63,8 +61,11 @@ class Collection:
     output_list: list[str]
     output_file: str
     url_to_page: dict[str, int]
+    logger: logging.Logger
 
-    def __init__(self, title: str, output_file: str, page_list: list[setting.TocOffset]) -> None:
+    def __init__(
+            self, title: str, output_file: str, page_list: list[setting.TocOffset], logger: logging.Logger
+    ) -> None:
         """
         Initialize the collection.
 
@@ -84,6 +85,7 @@ class Collection:
         self.url_to_page = {}
         self.output_file = output_file
         self.page_num = 1
+        self.logger = logger
 
     def create_pdf(self) -> str:
         """
@@ -102,11 +104,11 @@ class Collection:
             sanitized_page = re.sub(r'[\/:*?"<>|]', "_", page.title)
             output = build_dir + "/" + sanitized_page
 
-            logger.debug("Saving %s to %s.", sanitized_page, output)
+            self.logger.debug("Saving %s to %s.", sanitized_page, output)
             asyncio.run(self.render_pdf(page.title, output, page.level))
 
         for title in self.title_list:
-            logger.info(title)
+            self.logger.info(title)
         self.concat_pages()
         rmtree(build_dir)
         return self.output_file
@@ -123,7 +125,7 @@ class Collection:
             for pdf_path in self.output_list:
                 with Pdf.open(pdf_path) as pdf_reader:
                     pages = pdf_reader.pages
-                    logger.debug("Adding %d page(s) from %s to %s.", len(pages), pdf_path, self.output_file)
+                    self.logger.debug("Adding %d page(s) from %s to %s.", len(pages), pdf_path, self.output_file)
                     self.add_pages(pages, pdf_writer, page_offset)
                     page_offset += len(pages)
 
@@ -138,8 +140,10 @@ class Collection:
 
             try:
                 pdf_writer.save(self.output_file)
-            except OSError as e:
-                logger.fatal(f"OSError when trying to save. Does the name contain bad characters? {self.output_file}")
+            except OSError:
+                self.logger.fatal(
+                    f"OSError when trying to save. Does the name contain bad characters? {self.output_file}"
+                )
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
@@ -253,7 +257,7 @@ class Collection:
             browser = await pw.chromium.launch()
             page = await browser.new_page()
 
-            logger.info("Rendering url: %s to %s", url, output_file)
+            self.logger.info("Rendering url: %s to %s", url, output_file)
 
             page_content = self.fetch_html(url)
             title = self.extract_text_with_xslt(page_content, "h1#firstHeading")
@@ -305,12 +309,12 @@ class Collection:
         """
         rendered = await page.pdf(outline=True, format="Letter")
         if rendered is None:
-            logger.info("No pages")
+            self.logger.info("No pages")
             return
 
         with pdf_open(BytesIO(rendered)) as pdf:
             page_count = len(pdf.pages)
-            logger.info("Produced %d page(s) starting on %s", page_count, self.page_num)
+            self.logger.info("Produced %d page(s) starting on %s", page_count, self.page_num)
             self.page_num += page_count
 
             # Ensure directories exist
@@ -359,7 +363,7 @@ class Collection:
             modified in-place to include a GoTo action that points to an internal
             destination in the document.
         """
-        logger.info("Fixing link: %s -> page %s", uri, self.url_to_page[uri])
+        self.logger.info("Fixing link: %s -> page %s", uri, self.url_to_page[uri])
         annot_obj["/A"] = Dictionary(
             {
                 "/S": Name("/GoTo"),  # GoTo action instead of URI

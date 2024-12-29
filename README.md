@@ -19,3 +19,11 @@ WIKI_BOOK_PAGE=User:hexmode
 ```
 
 `COLLECTION_TITLE` will be used to name the PDF, so make sure all characters in it can be used in a filename.  For example, Windows does not allow colons (“:”) so don't use them in the title if you are on Windows.
+
+## Producing a PDF
+
+Once you have your `.env` file set up correctly, you can create a PDF. In the terminal window, run `poetry run print_mw_collection`. Assuming you used the `.env` file above, you'll have a filo
+
+```
+poetry run render_pdf
+```
