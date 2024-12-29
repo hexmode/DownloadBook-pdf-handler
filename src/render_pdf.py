@@ -2,6 +2,9 @@
 
 import logging
 import os
+from queue import Queue, Empty
+import threading
+import time
 import tkinter as tk
 
 from src.print_mw_collection import main as print_mw_collection
@@ -47,7 +50,12 @@ class SimpleUI:
         self.root.title("PDF Handler")
 
         self.create_widgets()
+
         self.setup_logger()
+
+        # Start the UI update loop to display logs
+        self.root.after(100, self.update_ui)
+
         self.load_defaults()
 
     def create_widgets(self) -> None:
@@ -112,11 +120,18 @@ class SimpleUI:
                 env_file.write(f"{key}={value}\n")
             self.logger.info("Configuration saved successfully")
 
+    def make_pdf(self) -> None:
+        # Add your actual logic here
+        print_mw_collection(self.logger)
+
     def print_mw_collection(self) -> None:
         """Call printing."""
         self.logger.info("Printing collection...")
-        # Add your actual logic here
-        print_mw_collection(self.logger)
+
+        # Start the background task in a separate thread
+        thread = threading.Thread(target=self.make_pdf)
+        thread.daemon = True  # Daemonize the thread so it exits with the main program
+        thread.start()
 
     def setup_logger(self) -> None:
         """Set up a logger."""
@@ -137,9 +152,23 @@ class SimpleUI:
         # Add the handlers to the logger
         self.logger.addHandler(th)
 
+    # Function to update the UI with log messages from the queue
+    def update_ui(self):
+        try:
+            # Get log message from the queue (non-blocking)
+            while True:
+                message = Queue().get_nowait()  # Try to get a message from the queue
+                self.log_text.config(state=tk.NORMAL)  # Enable editing of the text widget
+                self.log_text.insert(tk.END, message + '\n')  # Insert the log message
+                self.log_text.yview(tk.END)  # Scroll to the bottom
+                self.log_text.config(state=tk.DISABLED)  # Disable editing again
+        except Empty:  # Correct exception handling (use Empty, not queue.Empty)
+            pass
+        self.root.after(100, self.update_ui)  # Check again in 100ms
 
 def main() -> None:
     """Drive the application."""
     root = tk.Tk()
     SimpleUI(root)
+
     root.mainloop()
