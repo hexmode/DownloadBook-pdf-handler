@@ -96,14 +96,21 @@ class SimpleUI:
         print_button = tk.Button(self.root, text="Print Collection", command=self.print_mw_collection)
         print_button.grid(row=5, columnspan=2)
 
+    def parse_line(self, line) -> None:
+        """Handle an individual line in the settings file."""
+        line = line.split("#", 1)[0].strip()
+        if "=" in line and line:
+            key, value = line.split("=", 1)
+            if hasattr(self, f"{key.lower()}_entry"):
+                getattr(self, f"{key.lower()}_entry").insert(0, value)
+
     def load_defaults(self) -> None:
         """Load the defaults from .env if it exists."""
         if os.path.exists(".env"):
             with open(".env", "r", encoding="utf-8") as env_file:
                 for line in env_file:
-                    key, value = line.strip().split("=", 1)
-                    if hasattr(self, f"{key.lower()}_entry"):
-                        getattr(self, f"{key.lower()}_entry").insert(0, value)
+                    self.parse_line(line)
+
             self.logger.info("Loaded default configuration from .env file")
 
     def save_config(self) -> None:
