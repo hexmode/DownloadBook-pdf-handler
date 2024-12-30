@@ -6,7 +6,8 @@ from queue import Queue, Empty
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import Toplevel, Button, Label
+
 
 from src.print_mw_collection import main as print_mw_collection
 
@@ -74,19 +75,19 @@ class SimpleUI:
         entry fields, text widget for logs, and buttons for saving configuration
         and printing collection.
         """
-        tk.Label(self.root, text="WIKI_API_URL").grid(row=0, column=0)
+        Label(self.root, text="WIKI_API_URL").grid(row=0, column=0)
         self.wiki_api_url_entry = tk.Entry(self.root, width=50)
         self.wiki_api_url_entry.grid(row=0, column=1)
 
-        tk.Label(self.root, text="URL_PREFIX").grid(row=1, column=0)
+        Label(self.root, text="URL_PREFIX").grid(row=1, column=0)
         self.url_prefix_entry = tk.Entry(self.root, width=50)
         self.url_prefix_entry.grid(row=1, column=1)
 
-        tk.Label(self.root, text="COLLECTION_TITLE").grid(row=2, column=0)
+        Label(self.root, text="COLLECTION_TITLE").grid(row=2, column=0)
         self.collection_title_entry = tk.Entry(self.root, width=50)
         self.collection_title_entry.grid(row=2, column=1)
 
-        tk.Label(self.root, text="WIKI_BOOK_PAGE").grid(row=3, column=0)
+        Label(self.root, text="WIKI_BOOK_PAGE").grid(row=3, column=0)
         self.wiki_book_page_entry = tk.Entry(self.root, width=50)
         self.wiki_book_page_entry.grid(row=3, column=1)
 
@@ -98,10 +99,10 @@ class SimpleUI:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        save_button = tk.Button(self.root, text="Save", command=self.save_config)
+        save_button = Button(self.root, text="Save", command=self.save_config)
         save_button.grid(row=4, columnspan=2)
 
-        print_button = tk.Button(self.root, text="Print Collection", command=self.print_mw_collection)
+        print_button = Button(self.root, text="Print Collection", command=self.print_mw_collection)
         print_button.grid(row=5, columnspan=2)
 
     def parse_line(self, line) -> None:
@@ -172,9 +173,20 @@ class SimpleUI:
         thread.start()
 
     def notify_user(self) -> None:
-        """Notify the user with a popup."""
+        """Notify the user with a dialog."""
+        view_pdf = lambda: print("Opening PDF...")  # Replace with logic to open or display the PDF
+        return_to_root = lambda: (dialog.destroy(), self.root.deiconify())
+        quit_application = lambda: self.root.destroy()
+
         self.root.withdraw()  # Hide the main window
-        messagebox.showinfo("Notification", "PDF creation is complete!")
+        dialog = Toplevel(self.root)
+        dialog.title("Notification")
+
+        Label(dialog, text="PDF creation is complete!").pack(pady=10)
+
+        Button(dialog, text="Quit", command=quit_application).pack(side="left", padx=20, pady=20)
+        Button(dialog, text="View PDF", command=view_pdf).pack(side="left", padx=20, pady=20)
+        Button(dialog, text="Return", command=return_to_root).pack(side="left", padx=20, pady=20)
 
     def setup_logger(self) -> None:
         """
