@@ -3,10 +3,10 @@
 import logging
 import os
 import subprocess
-from queue import Queue, Empty
 import threading
 import tkinter as tk
-from tkinter import Toplevel, Button, Label
+from queue import Empty, Queue
+from tkinter import Button, Label, Toplevel
 
 from src.print_mw_collection import main as print_mw_collection
 
@@ -130,7 +130,7 @@ class SimpleUI:
         a confirmation message is logged.
         """
         if os.path.exists(".env"):
-            with open(".env", "r", encoding="utf-8") as env_file:
+            with open(".env", encoding="utf-8") as env_file:
                 for line in env_file:
                     self.parse_line(line)
 
@@ -149,7 +149,7 @@ class SimpleUI:
             "WIKI_API_URL": self.wiki_api_url_entry.get(),
             "URL_PREFIX": self.url_prefix_entry.get(),
             "COLLECTION_TITLE": self.collection_title_entry.get(),
-            "WIKI_BOOK_PAGE": self.wiki_book_page_entry.get()
+            "WIKI_BOOK_PAGE": self.wiki_book_page_entry.get(),
         }
 
         with open(".env", "w", encoding="utf-8") as env_file:
@@ -185,15 +185,16 @@ class SimpleUI:
         - On macOS and Linux systems, it uses the `xdg-open` command.
         """
         try:
-            if os.name == 'nt':  # For Windows
+            if os.name == "nt":  # For Windows
                 os.startfile(file_path)
-            elif os.name == 'posix':  # For macOS and Linux
-                subprocess.run(['xdg-open', file_path], check=True)
+            elif os.name == "posix":  # For macOS and Linux
+                subprocess.run(["xdg-open", file_path], check=True)
         except Exception as e:  # pylint: disable=W0718
             self.logger.error("Error while opening the file: %s", e)
 
     def notify_user(self, pdf_file: str) -> None:
         """Notify the user with a dialog."""
+
         def view_pdf() -> None:
             self.find_pdf_handler_and_open(pdf_file)
 
@@ -225,14 +226,11 @@ class SimpleUI:
         self.logger = logging.getLogger("SimpleUI")
         self.logger.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         th = TextHandler(self.root, self.log_text)
         th.setLevel(logging.DEBUG)
         th.setFormatter(formatter)
-
-        # Remove any existing handlers, not just console
-        self.logger.handlers = []
 
         # Add the text handler to the logger
         self.logger.addHandler(th)
@@ -249,7 +247,7 @@ class SimpleUI:
             while True:
                 message: str = Queue().get_nowait()  # Try to get a message from the queue
                 self.log_text.config(state=tk.NORMAL)  # Enable editing of the text widget
-                self.log_text.insert(tk.END, message + '\n')  # Insert the log message
+                self.log_text.insert(tk.END, message + "\n")  # Insert the log message
                 self.log_text.yview(tk.END)  # Scroll to the bottom
                 self.log_text.config(state=tk.DISABLED)  # Disable editing again
         except Empty:  # Correct exception handling (use Empty, not queue.Empty)
@@ -263,3 +261,7 @@ def main() -> None:
     SimpleUI(root)
 
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

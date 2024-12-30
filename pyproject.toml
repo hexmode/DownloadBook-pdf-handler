@@ -100,6 +100,16 @@ enabled = true
 [tool.pylsp.plugins.pycodestyle]
 enabled = false
 
+[tool.poetry-pyinstaller-plugin]
+exclude-include = true
+use-poetry-install = true
+
+[tool.poetry-pyinstaller-plugin.scripts]
+render_pdf = {source="src/render_pdf.py", type="onefile", bundle=true}
+
+[tool.poetry-pyinstaller-plugin.include]
+"font" = "font"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
