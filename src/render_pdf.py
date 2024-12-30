@@ -2,12 +2,11 @@
 
 import logging
 import os
+import subprocess
 from queue import Queue, Empty
 import threading
-import time
 import tkinter as tk
 from tkinter import Toplevel, Button, Label
-
 
 from src.print_mw_collection import main as print_mw_collection
 
@@ -102,10 +101,10 @@ class SimpleUI:
         save_button = Button(self.root, text="Save", command=self.save_config)
         save_button.grid(row=4, columnspan=2)
 
-        print_button = Button(self.root, text="Print Collection", command=self.print_mw_collection)
+        print_button = Button(self.root, text="Print Collection", command=self.print_collection)
         print_button.grid(row=5, columnspan=2)
 
-    def parse_line(self, line) -> None:
+    def parse_line(self, line: str) -> None:
         """
         Handle an individual line in the settings file.
 
@@ -160,10 +159,9 @@ class SimpleUI:
 
     def make_pdf(self) -> None:
         """Generate a PDF from the relevant collection and notify the user."""
-        print_mw_collection(self.logger)
-        self.notify_user()
+        self.notify_user(print_mw_collection(self.logger))
 
-    def print_mw_collection(self) -> None:
+    def print_collection(self) -> None:
         """Call printing."""
         self.logger.info("Printing collection...")
 
@@ -172,17 +170,45 @@ class SimpleUI:
         thread.daemon = True
         thread.start()
 
-    def notify_user(self) -> None:
+    def find_pdf_handler_and_open(self, file_path: str) -> None:
+        """
+        Open a PDF file using the default PDF handler on the system.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the PDF file to be opened.
+
+        Notes
+        -----
+        - On Windows systems, this function uses `os.startfile`.
+        - On macOS and Linux systems, it uses the `xdg-open` command.
+        """
+        try:
+            if os.name == 'nt':  # For Windows
+                os.startfile(file_path)
+            elif os.name == 'posix':  # For macOS and Linux
+                subprocess.run(['xdg-open', file_path], check=True)
+        except Exception as e:  # pylint: disable=W0718
+            self.logger.error("Error while opening the file: %s", e)
+
+    def notify_user(self, pdf_file: str) -> None:
         """Notify the user with a dialog."""
-        view_pdf = lambda: print("Opening PDF...")  # Replace with logic to open or display the PDF
-        return_to_root = lambda: (dialog.destroy(), self.root.deiconify())
-        quit_application = lambda: self.root.destroy()
+        def view_pdf() -> None:
+            self.find_pdf_handler_and_open(pdf_file)
+
+        def return_to_root() -> None:
+            dialog.destroy()
+            self.root.deiconify()
+
+        def quit_application() -> None:
+            self.root.destroy()
 
         self.root.withdraw()  # Hide the main window
         dialog = Toplevel(self.root)
         dialog.title("Notification")
 
-        Label(dialog, text="PDF creation is complete!").pack(pady=10)
+        Label(dialog, text=f"PDF creation is complete!\nSee {pdf_file}.").pack(pady=10)
 
         Button(dialog, text="Quit", command=quit_application).pack(side="left", padx=20, pady=20)
         Button(dialog, text="View PDF", command=view_pdf).pack(side="left", padx=20, pady=20)
@@ -211,17 +237,17 @@ class SimpleUI:
         # Add the text handler to the logger
         self.logger.addHandler(th)
 
-    def update_ui(self):
+    def update_ui(self) -> None:
         """
-        Updates the user interface by fetching log messages from the queue
-        and appending them to the log text widget. The method checks the
-        queue non-blocking and schedules itself to run again after a
-        specified interval.
+        Update the user interface.
+
+        Fetch log messages from the queue and appending them to the log text widget. The
+        method checks the queue non-blocking and schedules itself to run again after a specified interval.
         """
         try:
             # Get log message from the queue (non-blocking)
             while True:
-                message = Queue().get_nowait()  # Try to get a message from the queue
+                message: str = Queue().get_nowait()  # Try to get a message from the queue
                 self.log_text.config(state=tk.NORMAL)  # Enable editing of the text widget
                 self.log_text.insert(tk.END, message + '\n')  # Insert the log message
                 self.log_text.yview(tk.END)  # Scroll to the bottom
@@ -229,6 +255,7 @@ class SimpleUI:
         except Empty:  # Correct exception handling (use Empty, not queue.Empty)
             pass
         self.root.after(100, self.update_ui)  # Check again in 100ms
+
 
 def main() -> None:
     """Drive the application."""

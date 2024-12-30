@@ -8,7 +8,7 @@ import src.settings as setting
 from src.collection import Collection
 
 
-def main(logger: logging.Logger) -> None:
+def main(logger: logging.Logger) -> str:
     """
     Generate PDFs for a list of wiki pages.
 
@@ -26,6 +26,11 @@ def main(logger: logging.Logger) -> None:
     assuming `generate_pdf` handles the actual process of fetching the page and creating
     the PDF.
 
+    Returns
+    -------
+    str
+        The path of the generated PDF
+
     Examples
     --------
     >>> main()
@@ -37,4 +42,6 @@ def main(logger: logging.Logger) -> None:
         sys.exit()
 
     page_list = [setting.TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.pages]
-    Collection(setting.title, setting.title.replace(" ", "_") + ".pdf", page_list, logger).create_pdf()
+    file_name = setting.title.replace(" ", "_") + ".pdf"
+    Collection(setting.title, file_name, page_list, logger).create_pdf()
+    return file_name
