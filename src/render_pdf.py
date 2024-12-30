@@ -6,6 +6,7 @@ from queue import Queue, Empty
 import threading
 import time
 import tkinter as tk
+from tkinter import messagebox
 
 from src.print_mw_collection import main as print_mw_collection
 
@@ -28,7 +29,14 @@ class TextHandler(logging.Handler):
         self.log_text = log_text
 
     def emit(self, record: logging.LogRecord) -> None:
-        """Send the record to the window."""
+        """
+        Send the record to the window.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to be sent to the window.
+        """
         log_entry = self.format(record)
         self.root.after(0, lambda: self.log_text.insert(tk.END, log_entry + "\n"))
         self.log_text.see(tk.END)
@@ -97,7 +105,15 @@ class SimpleUI:
         print_button.grid(row=5, columnspan=2)
 
     def parse_line(self, line) -> None:
-        """Handle an individual line in the settings file."""
+        """
+        Handle an individual line in the settings file.
+
+        Parameters
+        ----------
+        line : str
+            A single line from the settings file. This line may contain a key-value pair separated
+            by an equal sign (`=`), as well as optional comments delimited by a `#` character.
+        """
         line = line.split("#", 1)[0].strip()
         if "=" in line and line:
             key, value = line.split("=", 1)
@@ -105,7 +121,14 @@ class SimpleUI:
                 getattr(self, f"{key.lower()}_entry").insert(0, value)
 
     def load_defaults(self) -> None:
-        """Load the defaults from .env if it exists."""
+        """
+        Load the defaults from .env file if it exists.
+
+        This method checks if a .env file exists in the current directory.
+        If it does, it reads the file line by line and processes each line
+        using the `parse_line` method. After loading the configuration,
+        a confirmation message is logged.
+        """
         if os.path.exists(".env"):
             with open(".env", "r", encoding="utf-8") as env_file:
                 for line in env_file:
@@ -114,7 +137,14 @@ class SimpleUI:
             self.logger.info("Loaded default configuration from .env file")
 
     def save_config(self) -> None:
-        """Save any changes to the configuration."""
+        """
+        Save any changes to the configuration.
+
+        This method gathers data from various entry fields, constructs a
+        configuration dictionary, and writes it to a file named `.env`.
+        Each configuration key and its corresponding value are saved
+        line by line in the file. Finally, a success message is logged.
+        """
         config = {
             "WIKI_API_URL": self.wiki_api_url_entry.get(),
             "URL_PREFIX": self.url_prefix_entry.get(),
@@ -128,8 +158,9 @@ class SimpleUI:
             self.logger.info("Configuration saved successfully")
 
     def make_pdf(self) -> None:
-        # Add your actual logic here
+        """Generate a PDF from the relevant collection and notify the user."""
         print_mw_collection(self.logger)
+        self.notify_user()
 
     def print_mw_collection(self) -> None:
         """Call printing."""
@@ -137,11 +168,21 @@ class SimpleUI:
 
         # Start the background task in a separate thread
         thread = threading.Thread(target=self.make_pdf)
-        thread.daemon = True  # Daemonize the thread so it exits with the main program
+        thread.daemon = True
         thread.start()
 
+    def notify_user(self) -> None:
+        """Notify the user with a popup."""
+        self.root.withdraw()  # Hide the main window
+        messagebox.showinfo("Notification", "PDF creation is complete!")
+
     def setup_logger(self) -> None:
-        """Set up a logger."""
+        """
+        Set up a logger for the SimpleUI application.
+
+        This method initializes a logger for the application, configures its level,
+        sets up a custom formatter, and attaches a TextHandler for logging output.
+        """
         # Set up a basic logger
         self.logger = logging.getLogger("SimpleUI")
         self.logger.setLevel(logging.DEBUG)
