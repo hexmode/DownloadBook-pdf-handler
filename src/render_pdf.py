@@ -152,10 +152,8 @@ class SimpleUI:
         th.setLevel(logging.DEBUG)
         th.setFormatter(formatter)
 
-        # Remove any existing console handlers
-        for handler in self.logger.handlers:
-            if isinstance(handler, logging.StreamHandler):
-                self.logger.removeHandler(handler)
+        # Remove any existing handlers, not just console
+        self.logger.handlers = []
 
         # Add the text handler to the logger
         self.logger.addHandler(th)
