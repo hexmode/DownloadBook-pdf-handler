@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 from collections import namedtuple
 from urllib.parse import urlparse
 
@@ -19,118 +18,96 @@ logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 TocOffset = namedtuple("TocOffset", ["title", "level"])
-# fmt: off
-                                # These are set at the end of this file.
-                                # EnvVar           Description
-api_url: str                    # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
-username: str | None = None     # WIKI_USER        The username for the wiki, if any.
-password: str | None = None     # WIKI_PASS        The password for the username.
-verify: str | None = None       # WIKI_CA_CERT     The path to the certificate authority's cert (if you have a custom CA
-                                #                  or self signed cert).
-title: str                      # COLLECTION_TITLE The title for the book being produced. This will be used for the
-                                #                  filename as well as in the produced PDF.
-page_list_page: str             # WIKI_BOOK_PAGE   The title of the wikipage that contains the structure of the book.
-pages: list[TocOffset]          #                  List of pages from the page_list_page
-_site: Site | None = None       #                  The mwclient object for the wiki
-# fmt: on
 
 
-def getenv_or_bail(envvar: str) -> str:
-    """
-    Retrieve the value of an environment variable or terminate the program if it is not set.
+class Settings:
+    """Class to carry the settings around."""
 
-    Parameters
-    ----------
-    envvar : str
-        The name of the environment variable to retrieve.
+    # fmt: off                      # EnvVar           Description
+    api_url: str | None  # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
+    url_prefix: str | None  # URL_PREFIX       The prefix before each page (i.e. http://example.wiki/wiki/).
+    username: str | None  # WIKI_USER        The username for the wiki, if any.
+    password: str | None  # WIKI_PASS        The password for the username.
+    verify: str | None  # WIKI_CA_CERT     The path to the certificate authority's cert
+    #                  (if you have a custom CA or self signed cert).
+    title: str | None  # COLLECTION_TITLE The title for the book being produced. This will be used for the
+    #                  filename as well as in the produced PDF.
+    page_list_page: str | None  # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
+    pages: list[TocOffset] | None  #                  List of pages from the page_list_page
+    site: Site | None  #                  The mwclient object for the wiki
+    # fmt: on
 
-    Returns
-    -------
-    str
-        The value of the requested environment variable.
+    def __init__(self) -> None:
+        """Initialize."""
+        # Define your credentials and MediaWiki API endpoint
+        self.load()
 
-    Raises
-    ------
-    SystemExit
-        If the specified environment variable is not set, the program will exit.
+    def load(self) -> None:
+        """Get settings from the environment."""
+        self.api_url = os.getenv("WIKI_API_URL")
+        self.url_prefix = os.getenv("URL_PREFIX")
+        self.username = os.getenv("WIKI_USER")
+        self.password = os.getenv("WIKI_PASS")
+        self.verify = os.getenv("WIKI_CA_CERT")
+        self.title = os.getenv("COLLECTION_TITLE")
+        self.page_list_page = os.getenv("WIKI_BOOK_PAGE")
 
-    Notes
-    -----
-    This function logs a fatal error and terminates the program using `sys.exit(1)`
-    if the specified environment variable is not found.
+    def get_site(self) -> Site:
+        """
+        Retrieve or initialize a `Site` object.
 
-    Examples
-    --------
-    >>> # To use the function, ensure the environment variable is set:
-    >>> # os.environ["MY_ENV_VAR"] = "my_value"
-    >>> getenv_or_bail("MY_ENV_VAR")
-    'my_value'
-    """
-    val = os.getenv(envvar)
-    if val is None:
-        logging.fatal("Envvar %s is not set", envvar)
-        sys.exit(1)
+        This function checks if the global `_site` object has already been created.
+        If not, it initializes a new `Site` instance based on the parsed `api_url`.
+        Specifically, it extracts the schema, domain, and path from the `api_url`
+        and uses them to instantiate a new `Site` object.
 
-    return val
+        Returns
+        -------
+        Site
+            An instance of the `Site` class that represents the current website
+            being used.
+        """
+        if not hasattr(self, "site"):
+            parsed = urlparse(self.api_url)
+            scheme = parsed.scheme
+            host = parsed.netloc
+            path: str | bytes = ""
+            if isinstance(parsed.path, bytes):
+                path = parsed.path.removesuffix(b"api.php")
+            elif isinstance(parsed.path, str):
+                path = parsed.path.removesuffix("api.php")
 
+            self.site = Site(host, scheme=scheme, path=path)
 
-def get_site() -> Site:
-    """
-    Retrieve or initialize a `Site` object.
+            if self.verify is not None:
+                session = Session()
+                session.verify = self.verify
+                self.site = Site(host, scheme=scheme, path=path, pool=session)
 
-    This function checks if the global `_site` object has already been created.
-    If not, it initializes a new `Site` instance based on the parsed `api_url`.
-    Specifically, it extracts the schema, domain, and path from the `api_url`
-    and uses them to instantiate a new `Site` object.
+        return self.site
 
-    Returns
-    -------
-    Site
-        An instance of the `Site` class that represents the current website
-        being used.
-    """
-    global _site  # pylint: disable=global-statement
-    if not _site:
-        parsed = urlparse(api_url)
-        scheme = parsed.scheme
-        host = parsed.netloc
-        path = parsed.path.removesuffix("api.php")
-        session = None
+    def get_page_list_pages(self) -> list[WikiPage]:
+        """
+        Retrieve and return a list of ordered WikiPage objects.
 
-        _site = Site(host, scheme=scheme, path=path)
+        This function performs the following operations:
+        1. Retrieves the site object and accesses the `page_list_page` entry.
+        2. Populates a book structure based on the retrieved page.
+        3. Extracts and returns the ordered WikiPage objects from the book.
 
-        if verify is not None:
-            session = Session()
-            session.verify = verify
-            _site = Site(host, scheme=scheme, path=path, pool=session)
+        Returns
+        -------
+        list[WikiPage]
+            A list of WikiPage objects in the intended order.
+        """
+        page = self.get_site().pages[self.page_list_page]
+        book = populate_book(page.text())
+        return get_ordered_wiki_pages(book)
 
-    return _site
-
-
-def get_page_list_pages() -> list[WikiPage]:
-    """
-    Retrieve and return a list of ordered WikiPage objects.
-
-    This function performs the following operations:
-    1. Retrieves the site object and accesses the `page_list_page` entry.
-    2. Populates a book structure based on the retrieved page.
-    3. Extracts and returns the ordered WikiPage objects from the book.
-
-    Returns
-    -------
-    list[WikiPage]
-        A list of WikiPage objects in the intended order.
-    """
-    page = get_site().pages[page_list_page]
-    book = populate_book(page.text())
-    return get_ordered_wiki_pages(book)
+    def get_pages(self) -> list[TocOffset]:
+        """Retrieve the page list from the wiki."""
+        return [TocOffset(title=page.link.url, level=page.level) for page in self.get_page_list_pages()]
 
 
-# Define your credentials and MediaWiki API endpoint
-api_url = getenv_or_bail("WIKI_API_URL")
-username = os.getenv("WIKI_USER")
-password = os.getenv("WIKI_PASS")
-verify = os.getenv("WIKI_CA_CERT")
-title = getenv_or_bail("COLLECTION_TITLE")
-page_list_page = getenv_or_bail("WIKI_BOOK_PAGE")
-pages = [TocOffset(title=page.link.url, level=page.level) for page in get_page_list_pages()]
+class MissingSettingError(Exception):
+    """Signal that a setting is missing."""

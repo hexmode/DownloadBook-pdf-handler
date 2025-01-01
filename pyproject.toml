@@ -95,7 +95,7 @@ enabled = true
 enabled = true
 
 [tool.pylsp.plugins.pylint]
-enabled = true
+enabled = false
 
 [tool.pylsp.plugins.pycodestyle]
 enabled = false
