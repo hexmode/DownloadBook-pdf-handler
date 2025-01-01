@@ -19,19 +19,24 @@ logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 TocOffset = namedtuple("TocOffset", ["title", "level"])
 # fmt: off
-                                    # These are set at the end of this file.
-                                    # EnvVar           Description
-api_url: str | None = None          # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
-username: str | None = None         # WIKI_USER        The username for the wiki, if any.
-password: str | None = None         # WIKI_PASS        The password for the username.
-verify: str | None = None           # WIKI_CA_CERT     The path to the certificate authority's cert
-                                    #                  (if you have a custom CA or self signed cert).
-title: str | None = None            # COLLECTION_TITLE The title for the book being produced. This will be used for the
-                                    #                  filename as well as in the produced PDF.
-page_list_page: str | None = None   # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
-pages: list[TocOffset]              #                  List of pages from the page_list_page
-_site: Site | None = None           #                  The mwclient object for the wiki
+                                # These are set at the end of this file.
+                                # EnvVar           Description
+api_url: str | None             # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
+url_prefix: str | None          # URL_PREFIX       The prefix before each page (i.e. http://example.wiki/wiki/).
+username: str | None            # WIKI_USER        The username for the wiki, if any.
+password: str | None            # WIKI_PASS        The password for the username.
+verify: str | None              # WIKI_CA_CERT     The path to the certificate authority's cert
+                                #                  (if you have a custom CA or self signed cert).
+title: str | None               # COLLECTION_TITLE The title for the book being produced. This will be used for the
+                                #                  filename as well as in the produced PDF.
+page_list_page: str | None      # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
+pages: list[TocOffset] | None   #                  List of pages from the page_list_page
+_site: Site | None              #                  The mwclient object for the wiki
 # fmt: on
+
+
+class MissingSettingError(Exception):
+    """Signal that a setting is missing."""
 
 
 def get_site() -> Site:
@@ -91,11 +96,28 @@ def get_page_list_pages() -> list[WikiPage]:
     return get_ordered_wiki_pages(book)
 
 
-# Define your credentials and MediaWiki API endpoint
-api_url = os.getenv("WIKI_API_URL")
-username = os.getenv("WIKI_USER")
-password = os.getenv("WIKI_PASS")
-verify = os.getenv("WIKI_CA_CERT")
-title = os.getenv("COLLECTION_TITLE")
-page_list_page = os.getenv("WIKI_BOOK_PAGE")
-pages = [TocOffset(title=page.link.url, level=page.level) for page in get_page_list_pages()]
+def get_pages() -> list[TocOffset]:
+    """Retrieve the page list from the wiki."""
+    if "api_url" not in globals() or api_url is None:
+        raise MissingSettingError("api_url")
+    return [TocOffset(title=page.link.url, level=page.level) for page in get_page_list_pages()]
+
+
+def get_api_url() -> str:
+    """Get API url or raise exception if not set."""
+
+    return _get_setting()
+
+
+def get_settings() -> None:
+    """Load settings from environment."""
+    global api_url, url_prefix, username, password, verify, title, page_list_page
+
+    # Define your credentials and MediaWiki API endpoint
+    api_url = os.getenv("WIKI_API_URL")
+    url_prefix = os.getenv("URL_PREFIX")
+    username = os.getenv("WIKI_USER")
+    password = os.getenv("WIKI_PASS")
+    verify = os.getenv("WIKI_CA_CERT")
+    title = os.getenv("COLLECTION_TITLE")
+    page_list_page = os.getenv("WIKI_BOOK_PAGE")
