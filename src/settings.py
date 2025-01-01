@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 from collections import namedtuple
 from urllib.parse import urlparse
 
@@ -20,58 +19,19 @@ logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 TocOffset = namedtuple("TocOffset", ["title", "level"])
 # fmt: off
-                                # These are set at the end of this file.
-                                # EnvVar           Description
-api_url: str                    # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
-username: str | None = None     # WIKI_USER        The username for the wiki, if any.
-password: str | None = None     # WIKI_PASS        The password for the username.
-verify: str | None = None       # WIKI_CA_CERT     The path to the certificate authority's cert (if you have a custom CA
-                                #                  or self signed cert).
-title: str                      # COLLECTION_TITLE The title for the book being produced. This will be used for the
-                                #                  filename as well as in the produced PDF.
-page_list_page: str             # WIKI_BOOK_PAGE   The title of the wikipage that contains the structure of the book.
-pages: list[TocOffset]          #                  List of pages from the page_list_page
-_site: Site | None = None       #                  The mwclient object for the wiki
+                                    # These are set at the end of this file.
+                                    # EnvVar           Description
+api_url: str | None = None          # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
+username: str | None = None         # WIKI_USER        The username for the wiki, if any.
+password: str | None = None         # WIKI_PASS        The password for the username.
+verify: str | None = None           # WIKI_CA_CERT     The path to the certificate authority's cert
+                                    #                  (if you have a custom CA or self signed cert).
+title: str | None = None            # COLLECTION_TITLE The title for the book being produced. This will be used for the
+                                    #                  filename as well as in the produced PDF.
+page_list_page: str | None = None   # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
+pages: list[TocOffset]              #                  List of pages from the page_list_page
+_site: Site | None = None           #                  The mwclient object for the wiki
 # fmt: on
-
-
-def getenv_or_bail(envvar: str) -> str:
-    """
-    Retrieve the value of an environment variable or terminate the program if it is not set.
-
-    Parameters
-    ----------
-    envvar : str
-        The name of the environment variable to retrieve.
-
-    Returns
-    -------
-    str
-        The value of the requested environment variable.
-
-    Raises
-    ------
-    SystemExit
-        If the specified environment variable is not set, the program will exit.
-
-    Notes
-    -----
-    This function logs a fatal error and terminates the program using `sys.exit(1)`
-    if the specified environment variable is not found.
-
-    Examples
-    --------
-    >>> # To use the function, ensure the environment variable is set:
-    >>> # os.environ["MY_ENV_VAR"] = "my_value"
-    >>> getenv_or_bail("MY_ENV_VAR")
-    'my_value'
-    """
-    val = os.getenv(envvar)
-    if val is None:
-        logging.fatal("Envvar %s is not set", envvar)
-        sys.exit(1)
-
-    return val
 
 
 def get_site() -> Site:
@@ -94,7 +54,12 @@ def get_site() -> Site:
         parsed = urlparse(api_url)
         scheme = parsed.scheme
         host = parsed.netloc
-        path = parsed.path.removesuffix("api.php")
+        path: str | bytes = ""
+        if isinstance(parsed.path, bytes):
+            path = parsed.path.removesuffix(b"api.php")
+        elif isinstance(parsed.path, str):
+            path = parsed.path.removesuffix("api.php")
+
         session = None
 
         _site = Site(host, scheme=scheme, path=path)
@@ -127,10 +92,10 @@ def get_page_list_pages() -> list[WikiPage]:
 
 
 # Define your credentials and MediaWiki API endpoint
-api_url = getenv_or_bail("WIKI_API_URL")
+api_url = os.getenv("WIKI_API_URL")
 username = os.getenv("WIKI_USER")
 password = os.getenv("WIKI_PASS")
 verify = os.getenv("WIKI_CA_CERT")
-title = getenv_or_bail("COLLECTION_TITLE")
-page_list_page = getenv_or_bail("WIKI_BOOK_PAGE")
+title = os.getenv("COLLECTION_TITLE")
+page_list_page = os.getenv("WIKI_BOOK_PAGE")
 pages = [TocOffset(title=page.link.url, level=page.level) for page in get_page_list_pages()]
