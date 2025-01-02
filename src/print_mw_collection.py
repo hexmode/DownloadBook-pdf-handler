@@ -2,9 +2,8 @@
 
 import logging
 
-import src.settings as setting
 from src.collection import Collection
-from src.settings import MissingSettingError
+from src.settings import MissingSettingError, Settings, TocOffset
 
 
 def main(logger: logging.Logger | None = None) -> str:
@@ -38,6 +37,7 @@ def main(logger: logging.Logger | None = None) -> str:
     if logger is None:
         logger = logging.getLogger("PrintMWCollection")
 
+    setting = Settings()
     url_prefix = setting.url_prefix
     if url_prefix is None or url_prefix == "":
         raise MissingSettingError("url_prefix")
@@ -46,7 +46,7 @@ def main(logger: logging.Logger | None = None) -> str:
     if title is None:
         raise MissingSettingError("title")
 
-    page_list = [setting.TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.get_pages()]
+    page_list = [TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.get_pages()]
     file_name = title.replace(" ", "_") + ".pdf"
     Collection(title, file_name, page_list, logger).create_pdf()
     return file_name

@@ -18,8 +18,8 @@ from pikepdf._core import PageList
 from playwright.async_api import Page as BrowserPage
 from playwright.async_api import async_playwright
 
-import src.settings as setting
 from src.common import Common
+from src.settings import Settings, TocOffset
 from src.toc import TableOfContents, TocEntry
 
 
@@ -55,7 +55,7 @@ class Collection:
     """
 
     title: str
-    page_list: list[setting.TocOffset]
+    page_list: list[TocOffset]
     title_list: list[TocEntry]
     page_num: int
     output_list: list[str]
@@ -63,9 +63,7 @@ class Collection:
     url_to_page: dict[str, int]
     logger: logging.Logger
 
-    def __init__(
-            self, title: str, output_file: str, page_list: list[setting.TocOffset], logger: logging.Logger
-    ) -> None:
+    def __init__(self, title: str, output_file: str, page_list: list[TocOffset], logger: logging.Logger) -> None:
         """
         Initialize the collection.
 
@@ -235,6 +233,7 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
+        setting = Settings()
         with httpx.Client(timeout=30, verify=setting.verify if setting.verify is not None else True) as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
