@@ -6,7 +6,7 @@ import subprocess
 import threading
 import tkinter as tk
 from queue import Empty, Queue
-from tkinter import Button, Label, Toplevel
+from tkinter import Button, Event, Label, Toplevel, messagebox
 
 from src.print_mw_collection import main as print_mw_collection
 from src.settings import Settings
@@ -158,6 +158,8 @@ class SimpleUI:
         print_button = Button(self.root, text="Print Collection", command=self.print_collection)
         print_button.grid(row=row, columnspan=2)
 
+        self.root.bind("<Return>", self.print_collection)
+
     def parse_line(self, line: str) -> None:
         """
         Handle an individual line in the settings file.
@@ -216,10 +218,20 @@ class SimpleUI:
 
     def make_pdf(self) -> None:
         """Generate a PDF from the relevant collection and notify the user."""
-        self.notify_user(print_mw_collection(self.logger, self.setting))
+        try:
+            self.notify_user(print_mw_collection(self.logger, self.setting))
+        except OSError as e:
+            messagebox.showerror("Error", str(e))
 
-    def print_collection(self) -> None:
-        """Call printing."""
+    def print_collection(self, _: Event | None = None) -> None:
+        """
+        Call printing.
+
+        Parameters
+        ----------
+        _ : placeholder
+            Ignored.
+        """
         self.logger.info("Printing collection...")
 
         # Start the background task in a separate thread
