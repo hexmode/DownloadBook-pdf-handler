@@ -23,24 +23,38 @@ TocOffset = namedtuple("TocOffset", ["title", "level"])
 class Settings:
     """Class to carry the settings around."""
 
-    # fmt: off                      # EnvVar           Description
-    api_url: str | None  # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
-    url_prefix: str | None  # URL_PREFIX       The prefix before each page (i.e. http://example.wiki/wiki/).
-    username: str | None  # WIKI_USER        The username for the wiki, if any.
-    password: str | None  # WIKI_PASS        The password for the username.
-    verify: str | None  # WIKI_CA_CERT     The path to the certificate authority's cert
-    #                  (if you have a custom CA or self signed cert).
-    title: str | None  # COLLECTION_TITLE The title for the book being produced. This will be used for the
-    #                  filename as well as in the produced PDF.
-    page_list_page: str | None  # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
-    pages: list[TocOffset] | None  #                  List of pages from the page_list_page
-    site: Site | None  #                  The mwclient object for the wiki
+    # fmt: off
+    #                                 EnvVar           Description
+    api_url: str | None             # WIKI_API_URL     The API URL (i.e. http://example.wiki/w/api.php).
+    url_prefix: str | None          # URL_PREFIX       The prefix before each page (i.e. http://example.wiki/wiki/).
+    username: str | None            # WIKI_USER        The username for the wiki, if any.
+    password: str | None            # WIKI_PASS        The password for the username.
+    verify: str | None              # WIKI_CA_CERT     The path to the certificate authority's cert
+    #                                                  (if you have a custom CA or self signed cert).
+    collection_title: str | None    # COLLECTION_TITLE The title for the book being produced. This will be used for the
+    #                                                  filename as well as in the produced PDF.
+    page_list_page: str | None      # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
+    pages: list[TocOffset] | None   #                  List of pages from the page_list_page
+    site: Site | None               #                  The mwclient object for the wiki
     # fmt: on
 
     def __init__(self) -> None:
         """Initialize."""
         # Define your credentials and MediaWiki API endpoint
         self.load()
+
+    def set_value(self, name: str, value: str) -> None:
+        """
+        Set an attribute with the value given.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute to set.
+        value : str
+            The value to set the attribute to.
+        """
+        setattr(self, name, value)
 
     def load(self) -> None:
         """Get settings from the environment."""
@@ -105,7 +119,14 @@ class Settings:
         return get_ordered_wiki_pages(book)
 
     def get_pages(self) -> list[TocOffset]:
-        """Retrieve the page list from the wiki."""
+        """
+        Retrieve the page list from the wiki.
+
+        Returns
+        -------
+        list[TocOffset]
+            The pages.
+        """
         return [TocOffset(title=page.link.url, level=page.level) for page in self.get_page_list_pages()]
 
 

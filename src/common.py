@@ -27,7 +27,7 @@ class Common:
     ID_TRANSFORM = "1 0 0 1"
 
     @staticmethod
-    def text_width(text: str, font_size: int, font_path: str = FONT_FAMILY_PATH) -> float:
+    def text_width(text: str, font_size: int, font_path: str | Path = FONT_FAMILY_PATH) -> float:
         """
         Calculate the width of a given text string when rendered with a specific font and size.
 
@@ -37,7 +37,7 @@ class Common:
             The text string whose width is to be measured.
         font_size : int
             The size of the font to be used for rendering the text.
-        font_path : str, optional
+        font_path : str | Path, optional
             The path to the font file to be used for rendering the text.
             Defaults to FONT_FAMILY_PATH.
 

@@ -6,13 +6,25 @@ from src.collection import Collection
 from src.settings import MissingSettingError, Settings, TocOffset
 
 
-def main(logger: logging.Logger | None = None) -> str:
+def main(logger: logging.Logger | None = None, setting: Settings | None = None) -> str:
     """
     Generate PDFs for a list of wiki pages.
 
     This function iterates through a predefined list of wiki pages, constructs full URLs
     by appending each page name to a fixed prefix, and calls an asynchronous function to
     generate a PDF for each page.
+
+    Parameters
+    ----------
+    logger : logging.Logger | None
+        The logger object if passed in.
+    setting : Settings | None
+        Settings object, if passed in.
+
+    Returns
+    -------
+    str
+        The path of the generated PDF.
 
     Raises
     ------
@@ -24,11 +36,6 @@ def main(logger: logging.Logger | None = None) -> str:
     assuming `generate_pdf` handles the actual process of fetching the page and creating
     the PDF.
 
-    Returns
-    -------
-    str
-        The path of the generated PDF
-
     Examples
     --------
     >>> main()
@@ -37,12 +44,14 @@ def main(logger: logging.Logger | None = None) -> str:
     if logger is None:
         logger = logging.getLogger("PrintMWCollection")
 
-    setting = Settings()
+    if setting is None:
+        setting = Settings()
+
     url_prefix = setting.url_prefix
     if url_prefix is None or url_prefix == "":
         raise MissingSettingError("url_prefix")
 
-    title = setting.title
+    title = setting.collection_title
     if title is None:
         raise MissingSettingError("title")
 

@@ -9,11 +9,21 @@ from queue import Empty, Queue
 from tkinter import Button, Label, Toplevel
 
 from src.print_mw_collection import main as print_mw_collection
+from src.settings import Settings
 
 
 # Redirect logs to the Text widget
 class TextHandler(logging.Handler):
-    """Send log to the window."""
+    """
+    Send log to the window.
+
+    Parameters
+    ----------
+    root : tk.Tk
+        The root window of the application.
+    log_text : tk.Text
+        The text panel which will show the logging.
+    """
 
     def __init__(self, root: tk.Tk, log_text: tk.Text):
         """
@@ -21,8 +31,10 @@ class TextHandler(logging.Handler):
 
         Parameters
         ----------
-        text : tk.Text
+        root : tk.Tk
             The root window of the application.
+        log_text : tk.Text
+            The text panel which will show the logging.
         """
         super().__init__()
         self.root = root
@@ -43,7 +55,14 @@ class TextHandler(logging.Handler):
 
 
 class SimpleUI:
-    """Implementation of a simple UI."""
+    """
+    Implementation of a simple UI.
+
+    Parameters
+    ----------
+    root : tk.Tk
+        The root window of the application.
+    """
 
     def __init__(self, root: tk.Tk):
         """
@@ -64,7 +83,20 @@ class SimpleUI:
         # Start the UI update loop to display logs
         self.root.after(100, self.update_ui)
 
+        self.setting = Settings()
         self.load_defaults()
+
+    def apply_setting(self, setting_name: str) -> None:
+        """
+        Set the setting value.
+
+        Parameters
+        ----------
+        setting_name : str
+            The name of the setting to update.
+        """
+        value = getattr(self, f"{setting_name.lower()}_var").get()
+        self.setting.set_value(setting_name.lower(), value)
 
     def create_widgets(self) -> None:
         """
@@ -75,19 +107,28 @@ class SimpleUI:
         and printing collection.
         """
         Label(self.root, text="WIKI_API_URL").grid(row=0, column=0)
-        self.wiki_api_url_entry = tk.Entry(self.root, width=50)
+        self.wiki_api_url_var = tk.StringVar()
+        self.wiki_api_url_var.trace("w", lambda *args: self.apply_setting("WIKI_API_URL"))
+
+        self.wiki_api_url_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_api_url_var)
         self.wiki_api_url_entry.grid(row=0, column=1)
 
         Label(self.root, text="URL_PREFIX").grid(row=1, column=0)
-        self.url_prefix_entry = tk.Entry(self.root, width=50)
+        self.url_prefix_var = tk.StringVar()
+        self.url_prefix_var.trace("w", lambda *args: self.apply_setting("URL_PREFIX"))
+        self.url_prefix_entry = tk.Entry(self.root, width=50, textvariable=self.url_prefix_var)
         self.url_prefix_entry.grid(row=1, column=1)
 
         Label(self.root, text="COLLECTION_TITLE").grid(row=2, column=0)
-        self.collection_title_entry = tk.Entry(self.root, width=50)
+        self.collection_title_var = tk.StringVar()
+        self.collection_title_var.trace("w", lambda *args: self.apply_setting("COLLECTION_TITLE"))
+        self.collection_title_entry = tk.Entry(self.root, width=50, textvariable=self.collection_title_var)
         self.collection_title_entry.grid(row=2, column=1)
 
         Label(self.root, text="WIKI_BOOK_PAGE").grid(row=3, column=0)
-        self.wiki_book_page_entry = tk.Entry(self.root, width=50)
+        self.wiki_book_page_var = tk.StringVar()
+        self.wiki_book_page_var.trace("w", lambda *args: self.apply_setting("WIKI_BOOK_PAGE"))
+        self.wiki_book_page_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_book_page_var)
         self.wiki_book_page_entry.grid(row=3, column=1)
 
         # Add a Text widget for log output
@@ -117,7 +158,9 @@ class SimpleUI:
         line = line.split("#", 1)[0].strip()
         if "=" in line and line:
             key, value = line.split("=", 1)
+
             if hasattr(self, f"{key.lower()}_entry"):
+                setattr(self.setting, key.lower(), value)
                 getattr(self, f"{key.lower()}_entry").insert(0, value)
 
     def load_defaults(self) -> None:
@@ -159,7 +202,7 @@ class SimpleUI:
 
     def make_pdf(self) -> None:
         """Generate a PDF from the relevant collection and notify the user."""
-        self.notify_user(print_mw_collection(self.logger))
+        self.notify_user(print_mw_collection(self.logger, self.setting))
 
     def print_collection(self) -> None:
         """Call printing."""
@@ -185,24 +228,34 @@ class SimpleUI:
         - On macOS and Linux systems, it uses the `xdg-open` command.
         """
         try:
-            if os.name == "nt":  # For Windows
+            if hasattr(os, "startfile"):
                 os.startfile(file_path)
             elif os.name == "posix":  # For macOS and Linux
-                subprocess.run(["xdg-open", file_path], check=True)
+                subprocess.run(["/usr/bin/xdg-open", file_path], check=True)
         except Exception as e:  # pylint: disable=W0718
             self.logger.error("Error while opening the file: %s", e)
 
     def notify_user(self, pdf_file: str) -> None:
-        """Notify the user with a dialog."""
+        """
+        Notify the user with a dialog.
+
+        Parameters
+        ----------
+        pdf_file : str
+            The pdf file to view (if requested).
+        """
 
         def view_pdf() -> None:
+            """View the PDF."""
             self.find_pdf_handler_and_open(pdf_file)
 
         def return_to_root() -> None:
+            """Go back to the main window."""
             dialog.destroy()
             self.root.deiconify()
 
         def quit_application() -> None:
+            """Quit the application."""
             self.root.destroy()
 
         self.root.withdraw()  # Hide the main window
