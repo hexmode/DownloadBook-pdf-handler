@@ -35,6 +35,10 @@ class Collection:
         The file path where the generated PDF will be saved.
     page_list : list[str]
         A list of URLs.
+    logger : logging.Logger
+        The logging object.
+    setting : Settings
+        The settings object.
 
     Attributes
     ----------
@@ -62,8 +66,11 @@ class Collection:
     output_file: str
     url_to_page: dict[str, int]
     logger: logging.Logger
+    setting: Settings
 
-    def __init__(self, title: str, output_file: str, page_list: list[TocOffset], logger: logging.Logger) -> None:
+    def __init__(
+        self, title: str, output_file: str, page_list: list[TocOffset], logger: logging.Logger, setting: Settings
+    ) -> None:
         """
         Initialize the collection.
 
@@ -75,6 +82,10 @@ class Collection:
             The file path where the generated PDF will be saved.
         page_list : list[str]
             A list of URLs.
+        logger : logging.Logger
+            The logger object.
+        setting : Settings
+            The settings object.
         """
         self.title = title
         self.page_list = page_list
@@ -83,6 +94,7 @@ class Collection:
         self.url_to_page = {}
         self.output_file = output_file
         self.page_num = 1
+        self.setting = setting
         self.logger = logger
 
     def create_pdf(self) -> str:
@@ -233,8 +245,8 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
-        setting = Settings()
-        with httpx.Client(timeout=30, verify=setting.verify if setting.verify is not None else True) as client:
+        verify = self.setting.verify if self.setting.verify is not None else True
+        with httpx.Client(timeout=30, verify=verify) as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
             return response.text

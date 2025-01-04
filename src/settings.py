@@ -54,7 +54,16 @@ class Settings:
         value : str
             The value to set the attribute to.
         """
-        setattr(self, name, value)
+        value_map = {
+            "WIKI_API_URL": "api_url",
+            "URL_PREFIX": "url_prefix",
+            "WIKI_USER": "username",
+            "WIKI_PASS": "password",
+            "WIKI_CA_CERT": "verify",
+            "COLLECTION_TITLE": "title",
+            "WIKI_BOOK_PAGE": "page_list_page",
+        }
+        setattr(self, value_map[name], value)
 
     def load(self) -> None:
         """Get settings from the environment."""
@@ -91,12 +100,12 @@ class Settings:
             elif isinstance(parsed.path, str):
                 path = parsed.path.removesuffix("api.php")
 
-            self.site = Site(host, scheme=scheme, path=path)
-
             if self.verify is not None:
                 session = Session()
                 session.verify = self.verify
                 self.site = Site(host, scheme=scheme, path=path, pool=session)
+            else:
+                self.site = Site(host, scheme=scheme, path=path)
 
         return self.site
 

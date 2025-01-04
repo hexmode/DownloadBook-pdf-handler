@@ -96,7 +96,7 @@ class SimpleUI:
             The name of the setting to update.
         """
         value = getattr(self, f"{setting_name.lower()}_var").get()
-        self.setting.set_value(setting_name.lower(), value)
+        self.setting.set_value(setting_name, value)
 
     def create_widgets(self) -> None:
         """
@@ -106,44 +106,57 @@ class SimpleUI:
         entry fields, text widget for logs, and buttons for saving configuration
         and printing collection.
         """
-        Label(self.root, text="WIKI_API_URL").grid(row=0, column=0)
+        row = 0
+        Label(self.root, text="WIKI_API_URL").grid(row=row, column=0)
         self.wiki_api_url_var = tk.StringVar()
         self.wiki_api_url_var.trace("w", lambda *args: self.apply_setting("WIKI_API_URL"))
-
         self.wiki_api_url_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_api_url_var)
-        self.wiki_api_url_entry.grid(row=0, column=1)
+        self.wiki_api_url_entry.grid(row=row, column=1)
 
-        Label(self.root, text="URL_PREFIX").grid(row=1, column=0)
+        row += 1
+        Label(self.root, text="WIKI_CA_CERT").grid(row=row, column=0)
+        self.wiki_ca_cert_var = tk.StringVar()
+        self.wiki_ca_cert_var.trace("w", lambda *args: self.apply_setting("WIKI_CA_CERT"))
+        self.wiki_ca_cert_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_ca_cert_var)
+        self.wiki_ca_cert_entry.grid(row=row, column=1)
+
+        row += 1
+        Label(self.root, text="URL_PREFIX").grid(row=row, column=0)
         self.url_prefix_var = tk.StringVar()
         self.url_prefix_var.trace("w", lambda *args: self.apply_setting("URL_PREFIX"))
         self.url_prefix_entry = tk.Entry(self.root, width=50, textvariable=self.url_prefix_var)
-        self.url_prefix_entry.grid(row=1, column=1)
+        self.url_prefix_entry.grid(row=row, column=1)
 
-        Label(self.root, text="COLLECTION_TITLE").grid(row=2, column=0)
+        row += 1
+        Label(self.root, text="COLLECTION_TITLE").grid(row=row, column=0)
         self.collection_title_var = tk.StringVar()
         self.collection_title_var.trace("w", lambda *args: self.apply_setting("COLLECTION_TITLE"))
         self.collection_title_entry = tk.Entry(self.root, width=50, textvariable=self.collection_title_var)
-        self.collection_title_entry.grid(row=2, column=1)
+        self.collection_title_entry.grid(row=row, column=1)
 
-        Label(self.root, text="WIKI_BOOK_PAGE").grid(row=3, column=0)
+        row += 1
+        Label(self.root, text="WIKI_BOOK_PAGE").grid(row=row, column=0)
         self.wiki_book_page_var = tk.StringVar()
         self.wiki_book_page_var.trace("w", lambda *args: self.apply_setting("WIKI_BOOK_PAGE"))
         self.wiki_book_page_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_book_page_var)
-        self.wiki_book_page_entry.grid(row=3, column=1)
+        self.wiki_book_page_entry.grid(row=row, column=1)
 
         # Add a Text widget for log output
+        row += 1
         self.log_text = tk.Text(self.root, height=10, width=60)
-        self.log_text.grid(row=6, columnspan=10, sticky="nsew")
+        self.log_text.grid(row=row, columnspan=10, sticky="nsew")
 
         # Configure grid weights to allow the text widget to expand
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
+        row += 1
         save_button = Button(self.root, text="Save", command=self.save_config)
-        save_button.grid(row=4, columnspan=2)
+        save_button.grid(row=row, columnspan=2)
 
+        row += 1
         print_button = Button(self.root, text="Print Collection", command=self.print_collection)
-        print_button.grid(row=5, columnspan=2)
+        print_button.grid(row=row, columnspan=2)
 
     def parse_line(self, line: str) -> None:
         """
@@ -193,6 +206,7 @@ class SimpleUI:
             "URL_PREFIX": self.url_prefix_entry.get(),
             "COLLECTION_TITLE": self.collection_title_entry.get(),
             "WIKI_BOOK_PAGE": self.wiki_book_page_entry.get(),
+            "WIKI_CA_CERT": self.wiki_ca_cert_entry.get(),
         }
 
         with open(".env", "w", encoding="utf-8") as env_file:

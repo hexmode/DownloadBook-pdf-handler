@@ -57,5 +57,5 @@ def main(logger: logging.Logger | None = None, setting: Settings | None = None) 
 
     page_list = [TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.get_pages()]
     file_name = title.replace(" ", "_") + ".pdf"
-    Collection(title, file_name, page_list, logger).create_pdf()
+    Collection(title, file_name, page_list, logger, setting).create_pdf()
     return file_name
