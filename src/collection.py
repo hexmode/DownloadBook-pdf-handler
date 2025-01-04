@@ -245,7 +245,11 @@ class Collection:
         str
             The HTML content of the specified URL.
         """
-        verify = self.setting.verify if self.setting.verify is not None else True
+        verify: str | bool = self.setting.verify if self.setting.verify is not None else True
+        if type(verify) is str and verify.lower() == "true":
+            verify = True
+        if type(verify) is str and verify.lower() == "false":
+            verify = False
         with httpx.Client(timeout=30, verify=verify) as client:
             response = client.get(url)
             response.raise_for_status()  # Raise an error for non-2xx responses
