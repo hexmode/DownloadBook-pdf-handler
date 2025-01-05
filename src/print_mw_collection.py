@@ -3,7 +3,8 @@
 import logging
 
 from src.collection import Collection
-from src.settings import MissingSettingError, Settings, TocOffset
+from src.exceptions import MissingSettingError
+from src.settings import Settings, TocOffset
 
 
 def main(logger: logging.Logger | None = None, setting: Settings | None = None) -> str:
@@ -49,11 +50,11 @@ def main(logger: logging.Logger | None = None, setting: Settings | None = None) 
 
     url_prefix = setting.url_prefix
     if url_prefix is None or url_prefix == "":
-        raise MissingSettingError("url_prefix")
+        raise MissingSettingError("URL_PREFIX")
 
     title = setting.collection_title
     if title is None:
-        raise MissingSettingError("title")
+        raise MissingSettingError("COLLECTION_TITLE")
 
     page_list = [TocOffset(title=url_prefix + page.title, level=page.level) for page in setting.get_pages()]
     file_name = title.replace(" ", "_") + ".pdf"

@@ -44,7 +44,7 @@ class Settings:
         "WIKI_USER": "username",
         "WIKI_PASS": "password",
         "WIKI_CA_CERT": "verify",
-        "COLLECTION_TITLE": "title",
+        "COLLECTION_TITLE": "collection_title",
         "WIKI_BOOK_PAGE": "page_list_page",
     }
 
@@ -164,7 +164,3 @@ class Settings:
             The pages.
         """
         return [TocOffset(title=page.link.url, level=page.level) for page in self.get_page_list_pages()]
-
-
-class MissingSettingError(Exception):
-    """Signal that a setting is missing."""

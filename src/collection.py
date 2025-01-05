@@ -19,6 +19,7 @@ from playwright.async_api import Page as BrowserPage
 from playwright.async_api import async_playwright
 
 from src.common import Common
+from src.exceptions import FileNameError, LoginCredsNeededError
 from src.settings import Settings, TocOffset
 from src.toc import TableOfContents, TocEntry
 
@@ -151,9 +152,7 @@ class Collection:
             try:
                 pdf_writer.save(self.output_file)
             except OSError:
-                self.logger.fatal(
-                    f"OSError when trying to save. Does the name contain bad characters? {self.output_file}"
-                )
+                raise FileNameError(self.output_file)
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
@@ -231,6 +230,50 @@ class Collection:
         page.contents_add(encoded, prepend=True)
         return page
 
+    def is_redirect_for_login(self, response: httpx.Response) -> bool:
+        """
+        Check if this a redirect for login.
+
+        Parameters
+        ----------
+        response : httpx.Response
+            The response object we're checking.
+
+        Returns
+        -------
+        bool
+            True if this is a login, False, otherwise.
+        """
+        if (
+            response.status_code == 302
+            and response.next_request
+            and "Special:UserLogin" in str(response.next_request.url)
+        ):
+            return True
+        return False
+
+    def handle_response(self, response: httpx.Response) -> str:
+        """
+        Handle all responses from fetches.
+
+        Parameters
+        ----------
+        response : httpx.Response
+            The response object we're checking.
+
+        Returns
+        -------
+        str
+            Contents of the response.
+        """
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if self.is_redirect_for_login(response):
+                raise LoginCredsNeededError() from e
+
+        return response.text
+
     def fetch_html(self, url: str) -> str:
         """
         Fetch the HTML content from the specified URL.
@@ -247,9 +290,7 @@ class Collection:
         """
         verify: str | bool = self.setting.verify if self.setting.verify is not None else True
         with httpx.Client(timeout=30, verify=verify) as client:
-            response = client.get(url)
-            response.raise_for_status()  # Raise an error for non-2xx responses
-            return response.text
+            return self.handle_response(client.get(url))
 
     async def render_pdf(self, url: str, output_file: str, level: int) -> None:
         """

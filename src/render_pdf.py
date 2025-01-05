@@ -6,52 +6,15 @@ import subprocess
 import threading
 import tkinter as tk
 from queue import Empty, Queue
+from ssl import SSLCertVerificationError
 from tkinter import Button, Event, Label, Toplevel, messagebox
 
+from httpx import ConnectError
+
+from src.exceptions import LoginCredsNeededError, MissingSettingError
 from src.print_mw_collection import main as print_mw_collection
 from src.settings import Settings
-
-
-# Redirect logs to the Text widget
-class TextHandler(logging.Handler):
-    """
-    Send log to the window.
-
-    Parameters
-    ----------
-    root : tk.Tk
-        The root window of the application.
-    log_text : tk.Text
-        The text panel which will show the logging.
-    """
-
-    def __init__(self, root: tk.Tk, log_text: tk.Text):
-        """
-        Initialize the logger class.
-
-        Parameters
-        ----------
-        root : tk.Tk
-            The root window of the application.
-        log_text : tk.Text
-            The text panel which will show the logging.
-        """
-        super().__init__()
-        self.root = root
-        self.log_text = log_text
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """
-        Send the record to the window.
-
-        Parameters
-        ----------
-        record : logging.LogRecord
-            The log record to be sent to the window.
-        """
-        log_entry = self.format(record)
-        self.root.after(0, lambda: self.log_text.insert(tk.END, log_entry + "\n"))
-        self.log_text.see(tk.END)
+from src.text_handler import TextHandler
 
 
 class SimpleUI:
@@ -119,6 +82,20 @@ class SimpleUI:
         self.wiki_ca_cert_var.trace("w", lambda *args: self.apply_setting("WIKI_CA_CERT"))
         self.wiki_ca_cert_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_ca_cert_var)
         self.wiki_ca_cert_entry.grid(row=row, column=1)
+
+        row += 1
+        Label(self.root, text="WIKI_USER").grid(row=row, column=0)
+        self.wiki_user_var = tk.StringVar()
+        self.wiki_user_var.trace("w", lambda *args: self.apply_setting("WIKI_USER"))
+        self.wiki_user_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_user_var)
+        self.wiki_user_entry.grid(row=row, column=1)
+
+        row += 1
+        Label(self.root, text="WIKI_PASS").grid(row=row, column=0)
+        self.wiki_pass_var = tk.StringVar()
+        self.wiki_pass_var.trace("w", lambda *args: self.apply_setting("WIKI_PASS"))
+        self.wiki_pass_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_pass_var)
+        self.wiki_pass_entry.grid(row=row, column=1)
 
         row += 1
         Label(self.root, text="URL_PREFIX").grid(row=row, column=0)
@@ -203,16 +180,10 @@ class SimpleUI:
         Each configuration key and its corresponding value are saved
         line by line in the file. Finally, a success message is logged.
         """
-        config = {
-            "WIKI_API_URL": self.wiki_api_url_entry.get(),
-            "URL_PREFIX": self.url_prefix_entry.get(),
-            "COLLECTION_TITLE": self.collection_title_entry.get(),
-            "WIKI_BOOK_PAGE": self.wiki_book_page_entry.get(),
-            "WIKI_CA_CERT": self.wiki_ca_cert_entry.get(),
-        }
-
         with open(".env", "w", encoding="utf-8") as env_file:
-            for key, value in config.items():
+            for key, _ in self.setting.value_map.items():
+                attr = getattr(self, key.lower() + "_entry")
+                value = attr.get()
                 env_file.write(f"{key}={value}\n")
             self.logger.info("Configuration saved successfully")
 
@@ -220,8 +191,18 @@ class SimpleUI:
         """Generate a PDF from the relevant collection and notify the user."""
         try:
             self.notify_user(print_mw_collection(self.logger, self.setting))
+        except LoginCredsNeededError:
+            messagebox.showerror("Login", "Login credentials are needed.  Try visiting Special:BotPasswords.")
         except OSError as e:
             messagebox.showerror("Error", str(e))
+        except MissingSettingError as e:
+            messagebox.showerror("Missing Setting", f"Please provide the {e}")
+        except ConnectError as e:
+            if isinstance(e.__cause__, SSLCertVerificationError):
+                messagebox.showerror(
+                    "SSL Certificate Verification Failed",
+                    'Secure connection failed.  Either provide an SSL Cert in WIKI_CA_CERT or enter "false".',
+                )
 
     def print_collection(self, _: Event | None = None) -> None:
         """
@@ -339,7 +320,10 @@ def main() -> None:
     root = tk.Tk()
     SimpleUI(root)
 
-    root.mainloop()
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
