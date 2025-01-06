@@ -11,3 +11,15 @@ class FileNameError(Exception):
 
 class MissingSettingError(Exception):
     """Signal that a setting is missing."""
+
+
+class ParseError(Exception):
+    """Signal that something on the page is wrong."""
+
+
+class NoChapterForSectionError(Exception):
+    """Exception thrown if there is no chapter started yet."""
+
+
+class NoLinkFoundError(Exception):
+    """Signal that no link was found where it was expected."""

@@ -2,222 +2,12 @@
 
 # pylint: disable=unsubscriptable-object
 
-
-class WikiLink:  # pylint: disable=too-few-public-methods
-    """
-    A named tuple representing a hyperlink and its associated label.
-
-    Parameters
-    ----------
-    link : str
-        The hyperlink represented as a string.
-    label : str
-        The label or text associated with the hyperlink.
-
-    Attributes
-    ----------
-    link : str
-        The hyperlink represented as a string.
-    label : str
-        The label or text associated with the hyperlink.
-    """
-
-    url: str
-    label: str
-
-    def __init__(self, link: str, label: str):
-        """
-        Create a WikiLink.
-
-        Parameters
-        ----------
-        link : str
-            The hyperlink represented as a string.
-        label : str
-            The label or text associated with the hyperlink.
-        """
-        self.url = link
-        self.label = label
-
-
-class WikiPage:  # pylint: disable=too-few-public-methods
-    """
-    Class representing a wiki page.
-
-    Parameters
-    ----------
-    link : WikiLink
-        A WikiLink object that represents a link to a specific wiki page.
-    level : int
-        The Table of Contents level.
-
-    Attributes
-    ----------
-    link : WikiLink
-        The wiki link for this page.
-    level : int
-        The Table of Contents level.
-    content : str
-        Content of the wiki page (raw/rendered text or markdown).
-    rendered_pages : list[int]
-        Number(s) of the resulting PDF pages (filled after rendering).
-    """
-
-    link: WikiLink
-    level: int
-    content: str | None = None
-    rendered_pages: list[int] = []
-
-    def __init__(self, link: WikiLink, level: int):
-        """
-        Initialize an instance of the class with a WikiLink object.
-
-        Parameters
-        ----------
-        link : WikiLink
-            A WikiLink object that represents a link to a specific wiki page.
-        level : int
-            The Table of Contents level.
-        """
-        self.link = link
-        self.level = level
-
-
-class Section:  # pylint: disable=too-few-public-methods
-    """
-    TypedDict representing a section within a chapter.
-
-    Parameters
-    ----------
-    page : WikiPage
-        A WikiPage object.
-
-    Attributes
-    ----------
-    title : str
-        Section title.
-    wiki_pages : list[WikiPage]
-        List of wiki pages in the section.
-    """
-
-    title: str
-    wiki_pages: list[WikiPage]
-
-    def __init__(self, page: WikiPage):
-        """
-        Initialize an instance of the class with a WikiLink object.
-
-        Parameters
-        ----------
-        page : WikiPage
-            A WikiPage object.
-        """
-        self.title = page.link.label
-        self.wiki_pages = [page]
-
-    def add_page(self, page: WikiPage) -> None:
-        """
-        Add a new WikiPage to the wiki_pages list.
-
-        Parameters
-        ----------
-        page : WikiPage
-            The WikiPage object to be added to the list.
-        """
-        self.wiki_pages.append(page)
-
-
-class Chapter:  # pylint: disable=too-few-public-methods
-    """
-    TypedDict representing a chapter in the book.
-
-    Parameters
-    ----------
-    page : WikiLink
-        A WikiLink object that represents a link to a specific wiki page.
-
-    Attributes
-    ----------
-    title : str
-        Chapter title.
-    wiki_pages : WikiPage
-        The top-level Wiki page
-    sections : list[Section]
-        Sections within the chapter.
-    """
-
-    title: str
-    wiki_pages: list[WikiPage]
-    sections: list[Section]
-
-    def __init__(self, page: WikiPage):
-        """
-        Initialize an instance of the class with a WikiLink object.
-
-        Parameters
-        ----------
-        page : WikiLink
-            A WikiLink object that represents a link to a specific wiki page.
-        """
-        self.title = page.link.label
-        self.wiki_pages = [page]
-        self.sections = []
-
-    def start_section(self, page: WikiPage) -> Section:
-        """
-        Start a section of a chapter.
-
-        Parameters
-        ----------
-        page : WikiLink
-            A WikiLink object that represents a link to a specific wiki page.
-
-        Returns
-        -------
-        Section
-            The section just created.
-        """
-        section = Section(page)
-        self.sections.append(section)
-        return section
-
-
-class Book:  # pylint: disable=too-few-public-methods
-    """
-    TypedDict representing a book.
-
-    Parameters
-    ----------
-    link : WikiLink
-        The link that provides the title and an introduction to the book.
-
-    Attributes
-    ----------
-    title : str
-        Book title.
-    front_matter : list[WikiPage] | None
-        Wiki pages in the front matter.
-    chapters : list[Chapter]
-        Chapters in the book.
-    """
-
-    title: str
-    front_matter: list[WikiPage] | None
-    chapters: list[Chapter]
-
-    def __init__(self, link: WikiLink):
-        """
-        Initialize a book.
-
-        Parameters
-        ----------
-        link : WikiLink
-            The link that provides the title and an introduction to the book.
-        """
-        self.link = link
-        self.front_matter = [WikiPage(link, 1)]
-        self.title = link.label
-        self.chapters = []
+from src.book import Book
+from src.chapter import Chapter
+from src.exceptions import NoChapterForSectionError, NoLinkFoundError, ParseError
+from src.section import Section
+from src.wiki_link import WikiLink
+from src.wiki_page import WikiPage
 
 
 def parse_line(line: str) -> WikiLink:
@@ -242,12 +32,18 @@ def parse_line(line: str) -> WikiLink:
     """
     start = line.find("[[") + 2
     end = line.find("]]")
-    link, label = line[start:end].split("|", 1)
+    if start == 1 and end == -1:
+        raise NoLinkFoundError(line)
+
+    bits = line[start:end].split("|", 1)
+    link = label = "Main_page"
+    if len(bits) == 2:
+        link, label = bits
+    if len(bits) == 1:
+        link = label = bits[0]
+    if len(bits) != 1 and len(bits) != 2:
+        raise ParseError(f"The line '{line}' could not be parsed.")
     return WikiLink(link, label)
-
-
-class NoChapterForSectionError(Exception):
-    """Exception thrown if there is no chapter started yet."""
 
 
 def populate_book(raw_structure: str) -> Book:

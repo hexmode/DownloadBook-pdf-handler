@@ -5,13 +5,16 @@ import os
 import subprocess
 import threading
 import tkinter as tk
+import traceback
 from queue import Empty, Queue
 from ssl import SSLCertVerificationError
 from tkinter import Button, Event, Label, Toplevel, messagebox
 
 from httpx import ConnectError
+from mwclient.errors import APIError, LoginError
+from requests.exceptions import ConnectionError as RequestConnectionError
 
-from src.exceptions import LoginCredsNeededError, MissingSettingError
+from src.exceptions import LoginCredsNeededError, MissingSettingError, NoLinkFoundError
 from src.print_mw_collection import main as print_mw_collection
 from src.settings import Settings
 from src.text_handler import TextHandler
@@ -26,6 +29,8 @@ class SimpleUI:
     root : tk.Tk
         The root window of the application.
     """
+
+    current_row = 0
 
     def __init__(self, root: tk.Tk):
         """
@@ -62,80 +67,53 @@ class SimpleUI:
         self.setting.set_value(setting_name, value)
 
     def create_widgets(self) -> None:
-        """
-        Set up widgets for the application.
-
-        This method creates and places various UI such as labels,
-        entry fields, text widget for logs, and buttons for saving configuration
-        and printing collection.
-        """
-        row = 0
-        Label(self.root, text="WIKI_API_URL").grid(row=row, column=0)
-        self.wiki_api_url_var = tk.StringVar()
-        self.wiki_api_url_var.trace("w", lambda *args: self.apply_setting("WIKI_API_URL"))
-        self.wiki_api_url_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_api_url_var)
-        self.wiki_api_url_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="WIKI_CA_CERT").grid(row=row, column=0)
-        self.wiki_ca_cert_var = tk.StringVar()
-        self.wiki_ca_cert_var.trace("w", lambda *args: self.apply_setting("WIKI_CA_CERT"))
-        self.wiki_ca_cert_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_ca_cert_var)
-        self.wiki_ca_cert_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="WIKI_USER").grid(row=row, column=0)
-        self.wiki_user_var = tk.StringVar()
-        self.wiki_user_var.trace("w", lambda *args: self.apply_setting("WIKI_USER"))
-        self.wiki_user_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_user_var)
-        self.wiki_user_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="WIKI_PASS").grid(row=row, column=0)
-        self.wiki_pass_var = tk.StringVar()
-        self.wiki_pass_var.trace("w", lambda *args: self.apply_setting("WIKI_PASS"))
-        self.wiki_pass_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_pass_var)
-        self.wiki_pass_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="URL_PREFIX").grid(row=row, column=0)
-        self.url_prefix_var = tk.StringVar()
-        self.url_prefix_var.trace("w", lambda *args: self.apply_setting("URL_PREFIX"))
-        self.url_prefix_entry = tk.Entry(self.root, width=50, textvariable=self.url_prefix_var)
-        self.url_prefix_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="COLLECTION_TITLE").grid(row=row, column=0)
-        self.collection_title_var = tk.StringVar()
-        self.collection_title_var.trace("w", lambda *args: self.apply_setting("COLLECTION_TITLE"))
-        self.collection_title_entry = tk.Entry(self.root, width=50, textvariable=self.collection_title_var)
-        self.collection_title_entry.grid(row=row, column=1)
-
-        row += 1
-        Label(self.root, text="WIKI_BOOK_PAGE").grid(row=row, column=0)
-        self.wiki_book_page_var = tk.StringVar()
-        self.wiki_book_page_var.trace("w", lambda *args: self.apply_setting("WIKI_BOOK_PAGE"))
-        self.wiki_book_page_entry = tk.Entry(self.root, width=50, textvariable=self.wiki_book_page_var)
-        self.wiki_book_page_entry.grid(row=row, column=1)
+        """Set up widgets for the application."""
+        self.add_entry_widget("WIKI_API_URL")
+        self.add_entry_widget("WIKI_CA_CERT")
+        self.add_entry_widget("WIKI_USER")
+        self.add_entry_widget("WIKI_PASS", "•")
+        self.add_entry_widget("URL_PREFIX")
+        self.add_entry_widget("COLLECTION_TITLE")
+        self.add_entry_widget("WIKI_BOOK_PAGE")
 
         # Add a Text widget for log output
-        row += 1
+        self.current_row += 1
         self.log_text = tk.Text(self.root, height=10, width=60)
-        self.log_text.grid(row=row, columnspan=10, sticky="nsew")
+        self.log_text.grid(row=self.current_row, columnspan=10, sticky="nsew")
 
         # Configure grid weights to allow the text widget to expand
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        row += 1
+        self.current_row += 1
         save_button = Button(self.root, text="Save", command=self.save_config)
-        save_button.grid(row=row, columnspan=2)
+        save_button.grid(row=self.current_row, columnspan=2)
 
-        row += 1
+        self.current_row += 1
         print_button = Button(self.root, text="Print Collection", command=self.print_collection)
-        print_button.grid(row=row, columnspan=2)
+        print_button.grid(row=self.current_row, columnspan=2)
 
         self.root.bind("<Return>", self.print_collection)
+
+    def add_entry_widget(self, label_text: str, shown: str = "") -> None:
+        """
+        Create a labeled entry widget and add it to the grid.
+
+        Parameters
+        ----------
+        label_text : str
+            The label for the entry.
+        shown : str
+            The character to show for input.  Default is "" to show provided input.
+        """
+        Label(self.root, text=label_text).grid(row=self.current_row, column=0)
+        var_name = f"{label_text.lower()}_var"
+        entry_name = f"{label_text.lower()}_entry"
+        setattr(self, var_name, tk.StringVar())
+        getattr(self, var_name).trace("w", lambda *args: self.apply_setting(label_text))
+        setattr(self, entry_name, tk.Entry(self.root, width=50, textvariable=getattr(self, var_name), show=shown))
+        getattr(self, entry_name).grid(row=self.current_row, column=1)
+        self.current_row += 1
 
     def parse_line(self, line: str) -> None:
         """
@@ -193,6 +171,9 @@ class SimpleUI:
             self.notify_user(print_mw_collection(self.logger, self.setting))
         except LoginCredsNeededError:
             messagebox.showerror("Login", "Login credentials are needed.  Try visiting Special:BotPasswords.")
+        except RequestConnectionError as e:
+            if "No route to host" in str(e):
+                messagebox.showerror("Connection error", "No route to host: Is there a typo in the URL?")
         except OSError as e:
             messagebox.showerror("Error", str(e))
         except MissingSettingError as e:
@@ -203,6 +184,18 @@ class SimpleUI:
                     "SSL Certificate Verification Failed",
                     'Secure connection failed.  Either provide an SSL Cert in WIKI_CA_CERT or enter "false".',
                 )
+        except APIError as e:
+            if e.code == "readapidenied":
+                messagebox.showerror("Login", f"Error accessing API ({e.code}).  Try visiting Special:BotPasswords.")
+        except LoginError as e:
+            self.logger.error(str(e))
+            messagebox.showerror("Login Error", str(e))
+        except NoLinkFoundError as e:
+            messagebox.showerror("Page structure problem", f"This line does not look like a link: <{e}>")
+        except Exception as e:  # pylint: disable=W0718
+            self.logger.warning("Uncaught exception of type %s", type(e))
+            self.logger.warning("Exception message: %s", str(e))
+            self.logger.debug("Backtrace:\n%s", traceback.format_exc())
 
     def print_collection(self, _: Event | None = None) -> None:
         """

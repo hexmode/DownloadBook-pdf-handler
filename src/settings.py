@@ -99,7 +99,7 @@ class Settings:
 
     def load(self) -> None:
         """Get settings from the environment."""
-        for var in self.value_map.keys():
+        for var in self.value_map:
             self.set_value(var, os.getenv(var))
 
     def get_site(self) -> Site:
@@ -134,6 +134,9 @@ class Settings:
             else:
                 self.site = Site(host, scheme=scheme, path=path)
 
+            if self.username and self.password:
+                self.site.login(self.username, self.password)
+
         return self.site
 
     def get_page_list_pages(self) -> list[WikiPage]:
@@ -150,6 +153,9 @@ class Settings:
         list[WikiPage]
             A list of WikiPage objects in the intended order.
         """
+        # Ensure that we set up the site with the current settings.
+        if hasattr(self, "site"):
+            delattr(self, "site")
         page = self.get_site().pages[self.page_list_page]
         book = populate_book(page.text())
         return get_ordered_wiki_pages(book)

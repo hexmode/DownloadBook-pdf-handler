@@ -307,7 +307,7 @@ class Collection:
         """
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
-            page = await browser.new_page()
+            page = await browser.new_page(ignore_https_errors=True)
 
             self.logger.info("Rendering url: %s to %s", url, output_file)
 
