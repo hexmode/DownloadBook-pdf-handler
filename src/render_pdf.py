@@ -11,10 +11,15 @@ from ssl import SSLCertVerificationError
 from tkinter import Button, Event, Label, Toplevel, messagebox
 
 from httpx import ConnectError
-from mwclient.errors import APIError, LoginError
+from mwclient.errors import APIError, LoginError, MaximumRetriesExceeded
 from requests.exceptions import ConnectionError as RequestConnectionError
 
-from src.exceptions import LoginCredsNeededError, MissingSettingError, NoLinkFoundError
+from src.exceptions import (
+    LoginCredsNeededError,
+    MissingSettingError,
+    NoLinkFoundError,
+    NoPageListPageError,
+)
 from src.print_mw_collection import main as print_mw_collection
 from src.settings import Settings
 from src.text_handler import TextHandler
@@ -190,8 +195,13 @@ class SimpleUI:
         except LoginError as e:
             self.logger.error(str(e))
             messagebox.showerror("Login Error", str(e))
+        except MaximumRetriesExceeded as e:
+            self.logger.error(str(e))
+            messagebox.showerror("Maximum Retries Exceeded", str(e))
         except NoLinkFoundError as e:
             messagebox.showerror("Page structure problem", f"This line does not look like a link: <{e}>")
+        except NoPageListPageError:
+            messagebox.showerror("Wiki Book Page", "Trouble getting the WIKI_BOOK_PAGE.")
         except Exception as e:  # pylint: disable=W0718
             self.logger.warning("Uncaught exception of type %s", type(e))
             self.logger.warning("Exception message: %s", str(e))

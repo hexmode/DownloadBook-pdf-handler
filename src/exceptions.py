@@ -23,3 +23,7 @@ class NoChapterForSectionError(Exception):
 
 class NoLinkFoundError(Exception):
     """Signal that no link was found where it was expected."""
+
+
+class NoPageListPageError(Exception):
+    """Signal that we couldn't get the page list page."""

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from mwclient import Site
 from requests import Session
 
+from src.exceptions import NoPageListPageError
 from src.structure import WikiPage, get_ordered_wiki_pages, populate_book
 
 load_dotenv()
@@ -21,7 +22,14 @@ TocOffset = namedtuple("TocOffset", ["title", "level"])
 
 
 class Settings:
-    """Class to carry the settings around."""
+    """
+    Class to carry the settings around.
+
+    Parameters
+    ----------
+    logger_name : str
+        The logger name to use.
+    """
 
     # fmt: off
     #                                 EnvVar           Description
@@ -48,10 +56,18 @@ class Settings:
         "WIKI_BOOK_PAGE": "page_list_page",
     }
 
-    def __init__(self) -> None:
-        """Initialize."""
+    def __init__(self, logger_name: str = "SimpleUI") -> None:
+        """
+        Initialize.
+
+        Parameters
+        ----------
+        logger_name : str
+            The logger name to use.
+        """
         # Define your credentials and MediaWiki API endpoint
         self.load()
+        self.logger = logging.getLogger(logger_name)
 
     def _map_verify(self, verify: str | None) -> str | bool | None:
         """
@@ -157,6 +173,8 @@ class Settings:
         if hasattr(self, "site"):
             delattr(self, "site")
         page = self.get_site().pages[self.page_list_page]
+        if not page.exists:
+            raise NoPageListPageError()
         book = populate_book(page.text())
         return get_ordered_wiki_pages(book)
 
