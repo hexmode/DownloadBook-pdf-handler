@@ -7,6 +7,7 @@ import re
 import tempfile
 from io import BytesIO
 from shutil import rmtree
+from typing import cast
 
 import httpx
 from bs4 import BeautifulSoup
@@ -15,6 +16,7 @@ from pikepdf import Page as PdfPage
 from pikepdf import Pdf
 from pikepdf import open as pdf_open
 from pikepdf._core import PageList
+from playwright._impl._api_structures import SetCookieParam
 from playwright.async_api import Page as BrowserPage
 from playwright.async_api import async_playwright
 
@@ -151,8 +153,8 @@ class Collection:
 
             try:
                 pdf_writer.save(self.output_file)
-            except OSError:
-                raise FileNameError(self.output_file)
+            except OSError as e:
+                raise FileNameError(self.output_file) from e
 
     def add_pages(self, pages: PageList, writer: Pdf, start_page: int) -> None:
         """
@@ -307,8 +309,13 @@ class Collection:
         """
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
-            page = await browser.new_page(ignore_https_errors=True)
-
+            context = await browser.new_context()
+            cookie_jar = [
+                SetCookieParam(name=cookie[0], value=cookie[1], url=self.setting.url_prefix)
+                for cookie in dict(self.setting.session.cookies).items()
+            ]
+            await context.add_cookies(cookie_jar)
+            page = await context.new_page()
             self.logger.info("Rendering url: %s to %s", url, output_file)
 
             page_content = self.fetch_html(url)
@@ -390,10 +397,10 @@ class Collection:
         """
         if "/Annots" not in page:
             return
-        for annot in page["/Annots"]:
+        for annot in cast(list[Object], page["/Annots"]):
             subtype = annot["/Subtype"]
             a = annot.get("/A", None) if subtype == "/Link" else None
-            uri = a.get("/URI", None) if a is not None else None
+            uri = str(a.get("/URI", None)) if a is not None else None
 
             if uri in self.url_to_page:
                 self.replace_url_link(uri, annot)
@@ -419,6 +426,7 @@ class Collection:
         annot_obj["/A"] = Dictionary(
             {
                 "/S": Name("/GoTo"),  # GoTo action instead of URI
-                "/D": [self.url_to_page[uri], Name("/Fit")],  # Link to the destination page
+                # Link to the destination page
+                "/D": [self.url_to_page[uri], Name("/Fit")],
             }
         )

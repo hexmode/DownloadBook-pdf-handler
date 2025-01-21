@@ -123,8 +123,11 @@ class PdfTocEntry:
             The annotation dictionary for the TOC entry.
         """
         left_margin = Common.MARGIN * entry.level
-        text_width = Common.text_width(entry.title, TOC_FONT_SIZE)  # Calculate rendered width of the text
-        total_width = text_width + Common.text_width(f" - {entry.page}", TOC_FONT_SIZE)  # Include page #
+        # Calculate rendered width of the text
+        text_width = Common.text_width(entry.title, TOC_FONT_SIZE)
+        # Include page #
+        total_width = text_width + Common.text_width(f" - {entry.page}", TOC_FONT_SIZE)
+
         return self.pdf.make_indirect(
             Dictionary(
                 {
@@ -140,7 +143,8 @@ class PdfTocEntry:
                     "/A": Dictionary(
                         {
                             "/S": Name("/GoTo"),  # GoTo action type
-                            "/D": [self.pdf.pages[entry.page - 1].obj, Name("/Fit")],  # Destination to target page
+                            # Destination to target page
+                            "/D": [self.pdf.pages[entry.page - 1].obj, Name("/Fit")],
                         }
                     ),
                 }
