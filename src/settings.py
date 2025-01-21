@@ -44,6 +44,7 @@ class Settings:
     page_list_page: str | None      # WIKI_BOOK_PAGE   The title of the wikipage that contains the the book.
     pages: list[TocOffset] | None   #                  List of pages from the page_list_page
     site: Site | None               #                  The mwclient object for the wiki
+    session: Session                #                  The session for mwclient
     # fmt: on
 
     value_map = {
@@ -117,6 +118,7 @@ class Settings:
         """Get settings from the environment."""
         for var in self.value_map:
             self.set_value(var, os.getenv(var))
+        self.session = Session()
 
     def get_site(self) -> Site:
         """
@@ -144,14 +146,11 @@ class Settings:
                 path = parsed.path.removesuffix("api.php")
 
             if self.verify is not None:
-                session = Session()
-                session.verify = self.verify
-                self.site = Site(host, scheme=scheme, path=path, pool=session)
-            else:
-                self.site = Site(host, scheme=scheme, path=path)
+                self.session.verify = self.verify
+            self.site = Site(host, scheme=scheme, path=path, pool=self.session)
 
             if self.username and self.password:
-                self.site.login(self.username, self.password)
+                self.site.clientlogin(username=self.username, password=self.password)
 
         return self.site
 
