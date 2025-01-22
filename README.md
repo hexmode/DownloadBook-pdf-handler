@@ -1,9 +1,9 @@
-# DownloadBook PDF handler #
+# DownloadBook PDF handler
 
 ## Installation on windows
 
-- Run the script found [here](https://gist.githubusercontent.com/JamesDawson/4d90e7fcc535c582c617ed553feaf35d/raw/333e24e5dcec3e3c9b9331c8a7273d875cc7b761/setup-pyenv-poetry-windows.ps1) in a PowerShell window. This will install python and poetry.  When prompted for a version, put 3.12.
-- In a terminal window visit the directory of the git checkout containing this README.  Run the command `poetry install`.
+- Run the script found [here](https://gist.githubusercontent.com/JamesDawson/4d90e7fcc535c582c617ed553feaf35d/raw/333e24e5dcec3e3c9b9331c8a7273d875cc7b761/setup-pyenv-poetry-windows.ps1) in a PowerShell window. This will install python and poetry. When prompted for a version, put 3.12.
+- In a terminal window visit the directory of the git checkout containing this README. Run the command `poetry install`.
 - Run the command `poetry run playwright install`.
 - Edit the `.env` file in the same directory for your needs.
 
@@ -18,7 +18,7 @@ COLLECTION_TITLE=A Book
 WIKI_BOOK_PAGE=User:hexmode
 ```
 
-`COLLECTION_TITLE` will be used to name the PDF, so make sure all characters in it can be used in a filename.  For example, Windows does not allow colons (“:”) so don't use them in the title if you are on Windows.
+`COLLECTION_TITLE` will be used to name the PDF, so make sure all characters in it can be used in a filename. For example, Windows does not allow colons (“:”) so don't use them in the title if you are on Windows.
 
 ## Producing a PDF
 
@@ -26,4 +26,13 @@ Once you have your `.env` file set up correctly, you can create a PDF. In the te
 
 ```
 poetry run render_pdf
+```
+
+## Create a binary
+
+```
+poetry self add poetry-pyinstaller-plugin
+poetry install
+PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install chromium-headless
+poetry build --format pyinstaller
 ```
