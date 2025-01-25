@@ -105,7 +105,6 @@ enabled = false
 
 [tool.poetry-pyinstaller-plugin]
 exclude-include = true
-use-poetry-install = true
 pre-build = "hooks.pyinstaller:pre_build"
 post-build = "hooks.pyinstaller:post_build"
 
