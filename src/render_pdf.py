@@ -47,7 +47,7 @@ class SimpleUI:
             The root window of the application.
         """
         self.root = root
-        self.root.title("PDF Handler")
+        self.root.title("Download Book PDF Handler")
 
         self.create_widgets()
 

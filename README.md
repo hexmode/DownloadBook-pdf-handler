@@ -33,6 +33,6 @@ poetry run render_pdf
 ```
 poetry self add poetry-pyinstaller-plugin
 poetry install
-PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install chromium-headless
+PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install chromium-headless-shell
 poetry build --format pyinstaller
 ```

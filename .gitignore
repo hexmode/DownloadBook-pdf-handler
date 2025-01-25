@@ -4,3 +4,5 @@ __pycache__
 /output/
 /dist/
 /build/
+.DS_Store
+render_pdf.spec
