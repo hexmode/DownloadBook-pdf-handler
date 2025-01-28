@@ -19,5 +19,11 @@ jobs:
         uses: abatilo/actions-poetry@v3
         with:
           poetry-version: latest
-      - name: View poetry --help
-        run: poetry --help
+      - name: Add pyinstaller
+        run: poetry self add poetry-pyinstaller-plugin
+      - name: Poetry install
+        run: poetry install
+      - name: Playwright install
+        run: PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install chromium-headless-shell
+      - name: Build
+        run: poetry build --format pyinstaller
