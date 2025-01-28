@@ -57,32 +57,12 @@ def clean_dir(dir: str, interface: PyInstallerPluginHook) -> None:
 
 def post_build(interface: PyInstallerPluginHook) -> None:
     """
-    Pyinstaller post build hook. Version built directory, remove generated folders.
+    Pyinstaller post build hook. Remove generated folders.
 
     Parameters
     ----------
     interface : PyInstallerPluginHook
         Access to PyInstaller.
     """
-    dist_path = Path("dist", "pyinstaller", interface.platform)
-    version = interface.pyproject_data["tool"]["poetry"]["version"]
-
-    interface.write_line("  - <b>Vesioning build</b>")
-    for script in interface.pyproject_data["tool"]["poetry-pyinstaller-plugin"]["scripts"]:
-        source = Path(dist_path, script)
-        destination = Path(dist_path, f"{script}_{version}")
-
-        if destination.exists() and destination.is_dir():
-            shutil.rmtree(destination)  # remove existing
-
-        if source.exists():
-            shutil.move(f"{source}", f"{destination}")
-
-        interface.write_line(
-            f"    - Updated " f"<success>{script}</success> -> " f"<success>{script}_{version}</success>"
-        )
-
-    interface.write_line("  - <b>Cleaning</b>")
-
     clean_dir("build", interface)
     clean_dir("site", interface)
