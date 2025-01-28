@@ -24,6 +24,8 @@ jobs:
       - name: Poetry install
         run: poetry install
       - name: Playwright install
-        run: PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install chromium-headless-shell
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: 0
+        run: poetry run playwright install chromium-headless-shell
       - name: Build
         run: poetry build --format pyinstaller
