@@ -291,7 +291,8 @@ class Collection:
             The HTML content of the specified URL.
         """
         verify: str | bool = self.setting.verify if self.setting.verify is not None else True
-        with httpx.Client(timeout=30, verify=verify) as client:
+        timeout: int = int(self.setting.timeout)
+        with httpx.Client(timeout=timeout, verify=verify) as client:
             return self.handle_response(client.get(url))
 
     async def render_pdf(self, url: str, output_file: str, level: int) -> None:
@@ -323,7 +324,7 @@ class Collection:
             if title is None:
                 title = "Untitled"  # Shouldn't happen with MediaWiki
             self.title_list.append(TocEntry(url=url, title=title, page=self.page_num, level=level))
-            self.url_to_page[url] = self.page_num + 1
+            self.url_to_page[url] = self.page_num
 
             self.output_list.append(output_file)
 
@@ -427,6 +428,6 @@ class Collection:
             {
                 "/S": Name("/GoTo"),  # GoTo action instead of URI
                 # Link to the destination page
-                "/D": [self.url_to_page[uri] - 1, Name("/Fit")],
+                "/D": [self.url_to_page[uri], Name("/Fit")],
             }
         )

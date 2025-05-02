@@ -49,6 +49,7 @@ class Settings:
     pages: list[TocOffset] | None   #                  List of pages from the page_list_page
     site: Site | None               #                  The mwclient object for the wiki
     session: Session                #                  The session for mwclient
+    timeout: int                    # WIKI_TIMEOUT     The timeout to fetch a page.
     # fmt: on
 
     value_map = {
@@ -59,6 +60,7 @@ class Settings:
         "WIKI_CA_CERT": "verify",
         "COLLECTION_TITLE": "collection_title",
         "WIKI_BOOK_PAGE": "page_list_page",
+        "WIKI_TIMEOUT": "timeout",
     }
 
     def __init__(self, logger_name: str = "SimpleUI") -> None:
@@ -96,6 +98,25 @@ class Settings:
         if verify.lower() == "false":
             mapped = False
 
+        return mapped
+
+    def _map_timeout(self, value: str | None) -> int:
+        """
+        Map the values from verify to a int, if necessary.
+
+        Parameters
+        ----------
+        value : str | None
+            The value to map to an int.
+
+        Returns
+        -------
+        int
+            The integer value.
+        """
+        if value is None:
+            return 0
+        mapped: int = int(value)
         return mapped
 
     def set_value(self, name: str, value: str | None) -> None:
