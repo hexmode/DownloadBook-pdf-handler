@@ -427,6 +427,6 @@ class Collection:
             {
                 "/S": Name("/GoTo"),  # GoTo action instead of URI
                 # Link to the destination page
-                "/D": [self.url_to_page[uri], Name("/Fit")],
+                "/D": [self.url_to_page[uri] - 1, Name("/Fit")],
             }
         )
