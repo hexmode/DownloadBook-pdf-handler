@@ -14,15 +14,15 @@ from httpx import ConnectError
 from mwclient.errors import APIError, LoginError, MaximumRetriesExceeded
 from requests.exceptions import ConnectionError as RequestConnectionError
 
-from src.exceptions import (
+from downloadbook_pdf_handler.exceptions import (
     LoginCredsNeededError,
     MissingSettingError,
     NoLinkFoundError,
     NoPageListPageError,
 )
-from src.print_mw_collection import main as print_mw_collection
-from src.settings import Settings
-from src.text_handler import TextHandler
+from downloadbook_pdf_handler.print_mw_collection import main as print_mw_collection
+from downloadbook_pdf_handler.settings import Settings
+from downloadbook_pdf_handler.text_handler import TextHandler
 
 
 class SimpleUI:

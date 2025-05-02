@@ -1,8 +1,8 @@
 """Class for a Book."""
 
-from src.chapter import Chapter
-from src.wiki_link import WikiLink
-from src.wiki_page import WikiPage
+from downloadbook_pdf_handler.chapter import Chapter
+from downloadbook_pdf_handler.wiki_link import WikiLink
+from downloadbook_pdf_handler.wiki_page import WikiPage
 
 
 class Book:  # pylint: disable=too-few-public-methods

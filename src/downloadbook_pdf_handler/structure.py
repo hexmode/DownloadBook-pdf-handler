@@ -2,12 +2,16 @@
 
 # pylint: disable=unsubscriptable-object
 
-from src.book import Book
-from src.chapter import Chapter
-from src.exceptions import NoChapterForSectionError, NoLinkFoundError, ParseError
-from src.section import Section
-from src.wiki_link import WikiLink
-from src.wiki_page import WikiPage
+from downloadbook_pdf_handler.book import Book
+from downloadbook_pdf_handler.chapter import Chapter
+from downloadbook_pdf_handler.exceptions import (
+    NoChapterForSectionError,
+    NoLinkFoundError,
+    ParseError,
+)
+from downloadbook_pdf_handler.section import Section
+from downloadbook_pdf_handler.wiki_link import WikiLink
+from downloadbook_pdf_handler.wiki_page import WikiPage
 
 
 def parse_line(line: str) -> WikiLink:

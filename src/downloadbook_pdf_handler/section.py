@@ -1,6 +1,6 @@
 """Class to represent a Section."""
 
-from src.wiki_page import WikiPage
+from downloadbook_pdf_handler.wiki_page import WikiPage
 
 
 class Section:  # pylint: disable=too-few-public-methods

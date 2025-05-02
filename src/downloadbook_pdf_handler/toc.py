@@ -8,7 +8,7 @@ from pikepdf import Array, Dictionary, Name, Object
 from pikepdf import Page as PdfPage
 from pikepdf import Pdf, Rectangle, Stream
 
-from src.common import Common
+from downloadbook_pdf_handler.common import Common
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

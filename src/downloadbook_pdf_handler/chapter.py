@@ -1,7 +1,7 @@
 """Class to represent a chapter."""
 
-from src.section import Section
-from src.wiki_page import WikiPage
+from downloadbook_pdf_handler.section import Section
+from downloadbook_pdf_handler.wiki_page import WikiPage
 
 
 class Chapter:  # pylint: disable=too-few-public-methods

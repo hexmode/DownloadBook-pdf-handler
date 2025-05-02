@@ -9,8 +9,12 @@ from dotenv import load_dotenv
 from mwclient import Site
 from requests import Session
 
-from src.exceptions import NoPageListPageError
-from src.structure import WikiPage, get_ordered_wiki_pages, populate_book
+from downloadbook_pdf_handler.exceptions import NoPageListPageError
+from downloadbook_pdf_handler.structure import (
+    WikiPage,
+    get_ordered_wiki_pages,
+    populate_book,
+)
 
 load_dotenv()
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)

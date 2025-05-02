@@ -1,6 +1,6 @@
 """Class to represent a page."""
 
-from src.wiki_link import WikiLink
+from downloadbook_pdf_handler.wiki_link import WikiLink
 
 
 class WikiPage:  # pylint: disable=too-few-public-methods

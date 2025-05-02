@@ -17,7 +17,7 @@ class Common:
     MARGIN = 72
 
     FONT_FAMILY = "Arial"
-    FONT_FAMILY_PATH = Path(__file__).parent.parent / "font" / "Arimo" / "static" / "Arimo-Regular.ttf"
+    FONT_FAMILY_PATH = Path(__file__).parent.parent.parent / "font" / "Arimo" / "static" / "Arimo-Regular.ttf"
 
     # 8.5x11 inches
     PAGE_HEIGHT = 792

@@ -1,10 +1,20 @@
 """Class to capture the login mechanics."""
 
 import logging
-from requests import Response, Session
+
 import src.settings as setting
+from requests import Response, Session
+
 
 def get_login_response() -> Response:
+    """
+    Trigger a login response.
+
+    Returns
+    -------
+    Response
+        From posting the login request.
+    """
     # Start a session
     session = Session()
 
@@ -12,22 +22,17 @@ def get_login_response() -> Response:
     session.verify = setting.verify
 
     # Step 1: Get login token
-    params = {
-        'action': 'query',
-        'meta': 'tokens',
-        'type': 'login',
-        'format': 'json'
-    }
+    params = {"action": "query", "meta": "tokens", "type": "login", "format": "json"}
     response = session.get(url=setting.api_url, params=params)
-    login_token = response.json()['query']['tokens']['logintoken']
+    login_token = response.json()["query"]["tokens"]["logintoken"]
 
     # Step 2: Log in
     params = {
-        'action': 'login',
-        'lgname': setting.username,
-        'lgpassword': setting.password,
-        'lgtoken': login_token,
-        'format': 'json'
+        "action": "login",
+        "lgname": setting.username,
+        "lgpassword": setting.password,
+        "lgtoken": login_token,
+        "format": "json",
     }
 
     response = session.post(url=setting.api_url, data=params)
@@ -35,17 +40,18 @@ def get_login_response() -> Response:
     return response
 
 
-def main():
+def main() -> None:
+    """Test the login."""
     # Set up logging
     logging.basicConfig(level=logging.DEBUG)
 
     # Enable logging for requests
-    logging.getLogger('urllib3').setLevel(logging.DEBUG)
+    logging.getLogger("urllib3").setLevel(logging.DEBUG)
 
     response = get_login_response()
 
     # Check if login was successful
-    if response.json()['login']['result'] == 'Success':
+    if response.json()["login"]["result"] == "Success":
         print("Logged in successfully!")
     else:
         print("Login failed:", response.json())

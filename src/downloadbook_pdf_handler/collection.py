@@ -20,10 +20,10 @@ from playwright._impl._api_structures import SetCookieParam
 from playwright.async_api import Page as BrowserPage
 from playwright.async_api import async_playwright
 
-from src.common import Common
-from src.exceptions import FileNameError, LoginCredsNeededError
-from src.settings import Settings, TocOffset
-from src.toc import TableOfContents, TocEntry
+from downloadbook_pdf_handler.common import Common
+from downloadbook_pdf_handler.exceptions import FileNameError, LoginCredsNeededError
+from downloadbook_pdf_handler.settings import Settings, TocOffset
+from downloadbook_pdf_handler.toc import TableOfContents, TocEntry
 
 
 class Collection:

@@ -2,9 +2,9 @@
 
 import logging
 
-from src.collection import Collection
-from src.exceptions import MissingSettingError
-from src.settings import Settings, TocOffset
+from downloadbook_pdf_handler.collection import Collection
+from downloadbook_pdf_handler.exceptions import MissingSettingError
+from downloadbook_pdf_handler.settings import Settings, TocOffset
 
 
 def main(logger: logging.Logger | None = None, setting: Settings | None = None) -> str:
