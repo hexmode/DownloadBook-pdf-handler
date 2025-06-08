@@ -3,7 +3,9 @@
 import logging
 import os
 import sys
+from typing import Iterable, cast
 
+import pikepdf
 from pikepdf import Pdf
 
 logging.basicConfig(level=logging.DEBUG)
@@ -49,16 +51,16 @@ def extract_urls(pdf_path: str) -> set[str]:
                 continue
 
             page_urls = set()
-            for annot in page["/Annots"]:
+            for annot in cast(Iterable[pikepdf._core.Object], page["/Annots"]):
                 subtype = annot["/Subtype"]
                 a = annot.get("/A", None) if subtype == "/Link" else None
-                uri = a.get("/URI", None) if a is not None else None
+                uri = str(a.get("/URI", None)) if a is not None else None
 
                 if uri is not None:
                     page_urls.add(uri)
 
             if len(page_urls) > 0:
-                logging.info("Page %d: URLs %s", page_num, ", ".join(str(url) for url in sorted(page_urls)))
+                logging.info("Page %d: URLs %s", page_num, ", ".join(sorted(page_urls)))
 
             urls.update(page_urls)
 
